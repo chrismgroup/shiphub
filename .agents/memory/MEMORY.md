@@ -1,0 +1,1 @@
+- [Vessel availability integrity](vessel-availability-integrity.md) — manual availability changes must respect active charter ownership and lifecycle state.

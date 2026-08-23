@@ -1,7 +1,8 @@
 import { and, desc, eq, ilike, sql } from "drizzle-orm";
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Response } from "express";
 import {
   db,
+  charterPartiesTable,
   vesselContactsTable,
   vesselPhotosTable,
   vesselUsersTable,
@@ -87,6 +88,26 @@ async function findVessel(id: number) {
     .leftJoin(vesselUsersTable, eq(vesselsTable.ownerId, vesselUsersTable.id))
     .where(eq(vesselsTable.id, id));
   return vessel;
+}
+
+async function hasActiveCharter(vesselId: number) {
+  const [charter] = await db
+    .select({ id: charterPartiesTable.id })
+    .from(charterPartiesTable)
+    .where(
+      and(
+        eq(charterPartiesTable.vesselId, vesselId),
+        eq(charterPartiesTable.status, "active"),
+      ),
+    )
+    .limit(1);
+  return Boolean(charter);
+}
+
+function rejectAvailableStatusDuringActiveCharter(res: Response) {
+  res.status(409).json({
+    error: "This vessel has an active charter. The charter must be terminated before the vessel can be marked available.",
+  });
 }
 
 router.use(requireVesselAuth);
@@ -256,6 +277,11 @@ router.put("/vessels/:id", async (req: VesselRequest, res): Promise<void> => {
     res.status(400).json({ error: "yearBuilt must be a whole number" });
     return;
   }
+  const requestedStatus = VESSEL_STATUSES.includes(body.status) ? body.status : existing.status;
+  if (requestedStatus === "available" && await hasActiveCharter(id)) {
+    rejectAvailableStatusDuringActiveCharter(res);
+    return;
+  }
 
   await db
     .update(vesselsTable)
@@ -273,7 +299,7 @@ router.put("/vessels/:id", async (req: VesselRequest, res): Promise<void> => {
       classificationSociety: stringValue(body.classificationSociety),
       tradingArea: stringValue(body.tradingArea),
       description: stringValue(body.description),
-      status: VESSEL_STATUSES.includes(body.status) ? body.status : existing.status,
+      status: requestedStatus,
       updatedAt: new Date(),
     })
     .where(eq(vesselsTable.id, id));
@@ -298,6 +324,11 @@ router.patch("/vessels/:id/status", async (req: VesselRequest, res): Promise<voi
   }
   if (!isAdminOrOwner(req) || (req.vesselAuth!.role !== "admin" && existing.ownerId !== req.vesselAuth!.userId)) {
     res.status(403).json({ error: "You cannot edit this vessel" });
+    return;
+  }
+
+  if (status === "available" && await hasActiveCharter(id)) {
+    rejectAvailableStatusDuringActiveCharter(res);
     return;
   }
 
