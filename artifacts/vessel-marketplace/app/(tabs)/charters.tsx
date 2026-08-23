@@ -18,6 +18,7 @@ import { useColors } from '@/hooks/useColors';
 import { useCharterSocket } from '@/hooks/useCharterSocket';
 import { api } from '@/lib/api';
 import type { CharterParty } from '@/lib/types';
+import { useAuth } from '@/context/AuthContext';
 
 function formatDate(d?: string | null) {
   if (!d) return '—';
@@ -31,10 +32,12 @@ function formatDate(d?: string | null) {
 export default function ChartersScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ['charter-parties'],
     queryFn: () => api.charters.list(),
+    enabled: !!user,
   });
 
   // Live updates via WebSocket — invalidates the query whenever the server

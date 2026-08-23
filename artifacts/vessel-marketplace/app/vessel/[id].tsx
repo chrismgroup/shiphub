@@ -37,7 +37,7 @@ export default function VesselDetailScreen() {
   const { data: vessel, isLoading, isError } = useQuery({
     queryKey: ['vessel', vesselId],
     queryFn: () => api.vessels.get(vesselId),
-    enabled: !isNaN(vesselId) && vesselId > 0,
+    enabled: !!user && !isNaN(vesselId) && vesselId > 0,
   });
 
   const topInset = Platform.OS === 'web' ? 67 : insets.top;

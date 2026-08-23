@@ -19,6 +19,7 @@ import { useColors } from '@/hooks/useColors';
 import { api } from '@/lib/api';
 import type { Vessel } from '@/lib/types';
 import { VESSEL_TYPES } from '@/lib/types';
+import { useAuth } from '@/context/AuthContext';
 
 const STATUSES = ['All', 'available', 'on_hire', 'laid_up', 'decommissioned'];
 const VESSEL_TYPE_FILTERS = ['All', ...VESSEL_TYPES];
@@ -34,6 +35,7 @@ const STATUS_LABELS: Record<string, string> = {
 export default function BrowseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
 
   const [search, setSearch] = useState('');
   const [vesselType, setVesselType] = useState('All');
@@ -48,6 +50,7 @@ export default function BrowseScreen() {
         vesselType,
         status,
       }),
+    enabled: !!user,
   });
 
   const topInset = Platform.OS === 'web' ? 67 : insets.top;

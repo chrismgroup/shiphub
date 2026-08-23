@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { api } from '@/lib/api';
 import type { VesselNotification } from '@/lib/types';
+import { useAuth } from '@/context/AuthContext';
 
 const TYPE_ICONS: Record<string, string> = {
   enquiry_received: 'inbox',
@@ -39,12 +40,14 @@ export default function NotificationsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
+  const { user } = useAuth();
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ['notifications'],
     queryFn: () => api.notifications.list(),
     refetchInterval: 30000,
     refetchIntervalInBackground: false,
+    enabled: !!user,
   });
 
   const markAllMutation = useMutation({
