@@ -9,6 +9,7 @@ import {
   vesselsTable,
 } from "@workspace/db";
 import { broadcastCharterUpdate } from "../lib/charter-socket";
+import { canActivateCharter, validateHireDates } from "./charter-lifecycle";
 import { requireVesselAuth, type VesselRequest } from "./vessel-auth-middleware";
 
 const router: IRouter = Router();
@@ -388,16 +389,31 @@ router.post("/charter-parties/:id/terminate", async (req: VesselRequest, res): P
     return;
   }
   const now = new Date();
-  await db.transaction(async (tx) => {
-    await tx
-      .update(charterPartiesTable)
-      .set({ status: "terminated", updatedAt: now })
-      .where(eq(charterPartiesTable.id, id));
-    await tx
-      .update(vesselsTable)
-      .set({ status: "available", updatedAt: now })
-      .where(eq(vesselsTable.id, charter.vesselId));
-  });
+  try {
+    await db.transaction(async (tx) => {
+      const [terminated] = await tx
+        .update(charterPartiesTable)
+        .set({ status: "terminated", updatedAt: now })
+        .where(
+          and(
+            eq(charterPartiesTable.id, id),
+            eq(charterPartiesTable.status, "active"),
+          ),
+        )
+        .returning({ id: charterPartiesTable.id });
+      if (!terminated) {
+        throw new Error("Only active charters can be terminated");
+      }
+      await tx
+        .update(vesselsTable)
+        .set({ status: "available", updatedAt: now })
+        .where(eq(vesselsTable.id, charter.vesselId));
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to terminate charter";
+    res.status(409).json({ error: message });
+    return;
+  }
   broadcastCharterUpdate(id);
   await notify(
     charter.chartererId,
@@ -414,8 +430,7 @@ router.post("/charter-parties/:id/activate", async (req: VesselRequest, res): Pr
   const charter = Number.isInteger(id) && id > 0 ? await findCharter(id) : undefined;
   if (
     !charter ||
-    req.vesselAuth!.role !== "admin" &&
-      req.vesselAuth!.userId !== charter.ownerId
+    !canActivateCharter(req.vesselAuth!, charter)
   ) {
     res.status(404).json({ error: "Charter not found" });
     return;
@@ -429,19 +444,12 @@ router.post("/charter-parties/:id/activate", async (req: VesselRequest, res): Pr
     return;
   }
 
-  const requestedStart = dateValue(req.body?.hireStart);
-  const requestedEnd = dateValue(req.body?.hireEnd);
-  if (req.body?.hireStart && !requestedStart || req.body?.hireEnd && !requestedEnd) {
-    res.status(400).json({ error: "Hire dates must be valid dates" });
+  const dates = validateHireDates(req.body ?? {}, charter);
+  if ("error" in dates) {
+    res.status(400).json({ error: dates.error });
     return;
   }
-
-  const hireStart = requestedStart ?? charter.laycanEarliest ?? new Date();
-  const hireEnd = requestedEnd ?? new Date(hireStart.getTime() + charter.durationDays * 24 * 60 * 60 * 1000);
-  if (hireEnd <= hireStart) {
-    res.status(400).json({ error: "hireEnd must be after hireStart" });
-    return;
-  }
+  const { hireStart, hireEnd } = dates;
 
   const now = new Date();
   try {
