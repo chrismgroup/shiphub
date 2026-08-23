@@ -169,6 +169,12 @@ export const api = {
       request<CharterParty>(`/charter-parties/${id}/terminate`, {
         method: 'POST',
       }),
+
+    activate: (id: number, data?: { hireStart?: string; hireEnd?: string }) =>
+      request<CharterParty>(`/charter-parties/${id}/activate`, {
+        method: 'POST',
+        body: JSON.stringify(data ?? {}),
+      }),
   },
 
   // ── NOTIFICATIONS ─────────────────────────────────────────────────────────

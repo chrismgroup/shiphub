@@ -86,6 +86,12 @@ export default function CharterDetailScreen() {
     onError: (err: Error) => Alert.alert('Error', err.message),
   });
 
+  const activateMutation = useMutation({
+    mutationFn: () => api.charters.activate(charterId),
+    onSuccess: invalidate,
+    onError: (err: Error) => Alert.alert('Error', err.message),
+  });
+
   const updateMutation = useMutation({
     mutationFn: (data: CharterFormData) => api.charters.update(charterId, data),
     onSuccess: () => {
@@ -146,6 +152,7 @@ export default function CharterDetailScreen() {
   const canEdit = (isOwner || isCharterer) && ['enquiry', 'negotiating'].includes(cp.status);
   const canConfirm = (isOwner || isCharterer) && ['enquiry', 'negotiating'].includes(cp.status);
   const canDecline = (isOwner || isCharterer) && ['enquiry', 'negotiating'].includes(cp.status);
+  const canActivate = isOwner && cp.status === 'confirmed';
   const canTerminate = isOwner && cp.status === 'active';
 
   return (
@@ -254,7 +261,7 @@ export default function CharterDetailScreen() {
             )}
 
             {/* Actions */}
-            {(canConfirm || canDecline || canTerminate) && (
+            {(canConfirm || canDecline || canActivate || canTerminate) && (
               <View style={styles.actions}>
                 {canConfirm && (
                   <ActionBtn
@@ -280,6 +287,20 @@ export default function CharterDetailScreen() {
                     onPress={() =>
                       confirmAction('Decline Charter', 'Decline this charter enquiry?', () =>
                         declineMutation.mutate(),
+                      )
+                    }
+                  />
+                )}
+                {canActivate && (
+                  <ActionBtn
+                    icon="play"
+                    label="Start Hire"
+                    color={colors.statusActive}
+                    bg={colors.statusActiveBg}
+                    loading={activateMutation.isPending}
+                    onPress={() =>
+                      confirmAction('Start Hire', 'Activate this confirmed charter and mark the vessel as on hire?', () =>
+                        activateMutation.mutate(),
                       )
                     }
                   />

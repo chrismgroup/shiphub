@@ -387,16 +387,107 @@ router.post("/charter-parties/:id/terminate", async (req: VesselRequest, res): P
     res.status(409).json({ error: "Only active charters can be terminated" });
     return;
   }
-  await db
-    .update(charterPartiesTable)
-    .set({ status: "terminated", updatedAt: new Date() })
-    .where(eq(charterPartiesTable.id, id));
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(charterPartiesTable)
+      .set({ status: "terminated", updatedAt: now })
+      .where(eq(charterPartiesTable.id, id));
+    await tx
+      .update(vesselsTable)
+      .set({ status: "available", updatedAt: now })
+      .where(eq(vesselsTable.id, charter.vesselId));
+  });
   broadcastCharterUpdate(id);
   await notify(
     charter.chartererId,
     "charter_terminated",
     "Charter terminated",
     `${charter.vesselName} charter was terminated by the owner.`,
+    id,
+  );
+  res.json(serializeCharter((await findCharter(id))!));
+});
+
+router.post("/charter-parties/:id/activate", async (req: VesselRequest, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const charter = Number.isInteger(id) && id > 0 ? await findCharter(id) : undefined;
+  if (
+    !charter ||
+    req.vesselAuth!.role !== "admin" &&
+      req.vesselAuth!.userId !== charter.ownerId
+  ) {
+    res.status(404).json({ error: "Charter not found" });
+    return;
+  }
+  if (charter.status !== "confirmed") {
+    res.status(409).json({ error: "Only confirmed charters can be activated" });
+    return;
+  }
+  if (!charter.durationDays || charter.durationDays <= 0) {
+    res.status(409).json({ error: "A positive charter duration is required before activation" });
+    return;
+  }
+
+  const requestedStart = dateValue(req.body?.hireStart);
+  const requestedEnd = dateValue(req.body?.hireEnd);
+  if (req.body?.hireStart && !requestedStart || req.body?.hireEnd && !requestedEnd) {
+    res.status(400).json({ error: "Hire dates must be valid dates" });
+    return;
+  }
+
+  const hireStart = requestedStart ?? charter.laycanEarliest ?? new Date();
+  const hireEnd = requestedEnd ?? new Date(hireStart.getTime() + charter.durationDays * 24 * 60 * 60 * 1000);
+  if (hireEnd <= hireStart) {
+    res.status(400).json({ error: "hireEnd must be after hireStart" });
+    return;
+  }
+
+  const now = new Date();
+  try {
+    await db.transaction(async (tx) => {
+      const [vessel] = await tx
+        .select({ status: vesselsTable.status })
+        .from(vesselsTable)
+        .where(eq(vesselsTable.id, charter.vesselId));
+      if (!vessel) {
+        throw new Error("Vessel not found");
+      }
+      if (vessel.status !== "available") {
+        throw new Error("This vessel is not currently available");
+      }
+
+      const [claimedVessel] = await tx
+        .update(vesselsTable)
+        .set({ status: "on_hire", updatedAt: now })
+        .where(
+          and(
+            eq(vesselsTable.id, charter.vesselId),
+            eq(vesselsTable.status, "available"),
+          ),
+        )
+        .returning({ id: vesselsTable.id });
+      if (!claimedVessel) {
+        throw new Error("This vessel is not currently available");
+      }
+
+      await tx
+        .update(charterPartiesTable)
+        .set({ status: "active", hireStart, hireEnd, updatedAt: now })
+        .where(eq(charterPartiesTable.id, id));
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to activate charter";
+    res.status(message === "Vessel not found" ? 404 : 409).json({ error: message });
+    return;
+  }
+
+  broadcastCharterUpdate(id);
+  await notify(
+    charter.chartererId,
+    "charter_active",
+    "Charter hire started",
+    `${charter.vesselName} is now on hire from ${hireStart.toISOString().slice(0, 10)} to ${hireEnd.toISOString().slice(0, 10)}.`,
     id,
   );
   res.json(serializeCharter((await findCharter(id))!));
