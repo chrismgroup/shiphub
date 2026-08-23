@@ -8,7 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "DATABASE_URL=postgres://localhost/test node --experimental-strip-types --test src/routes/charters.lifecycle.test.ts"
+    "test": "NODE_ENV=production node build-test.mjs && NODE_ENV=production node --test .test-build/charters.lifecycle.test.cjs; status=$?; rm -rf .test-build; exit $status"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",

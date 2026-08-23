@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { IncomingMessage, Server } from "node:http";
 import type { Socket } from "node:net";
-import { authenticateVesselToken } from "../routes/vessel-auth-middleware";
+import { authenticateVesselToken } from "../routes/vessel-auth-middleware.ts";
 
 const charterClients = new Set<Socket>();
 

@@ -8,7 +8,7 @@ import {
   vesselUsersTable,
   vesselsTable,
 } from "@workspace/db";
-import { isAdminOrOwner, requireVesselAuth, type VesselRequest } from "./vessel-auth-middleware";
+import { isAdminOrOwner, requireVesselAuth, type VesselRequest } from "./vessel-auth-middleware.ts";
 
 const router: IRouter = Router();
 const VESSEL_STATUSES = ["available", "on_hire", "laid_up", "decommissioned"] as const;

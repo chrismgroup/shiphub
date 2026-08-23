@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { db, vesselNotificationsTable } from "@workspace/db";
-import { requireVesselAuth, type VesselRequest } from "./vessel-auth-middleware";
+import { requireVesselAuth, type VesselRequest } from "./vessel-auth-middleware.ts";
 
 const router: IRouter = Router();
 

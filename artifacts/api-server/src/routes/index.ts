@@ -1,9 +1,9 @@
 import { Router, type IRouter } from "express";
-import healthRouter from "./health";
-import vesselAuthRouter from "./vessel-auth";
-import vesselsRouter from "./vessels";
-import chartersRouter from "./charters";
-import notificationsRouter from "./notifications";
+import healthRouter from "./health.ts";
+import vesselAuthRouter from "./vessel-auth.ts";
+import vesselsRouter from "./vessels.ts";
+import chartersRouter from "./charters.ts";
+import notificationsRouter from "./notifications.ts";
 
 const router: IRouter = Router();
 

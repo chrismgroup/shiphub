@@ -8,9 +8,9 @@ import {
   vesselUsersTable,
   vesselsTable,
 } from "@workspace/db";
-import { broadcastCharterUpdate } from "../lib/charter-socket";
-import { canActivateCharter, validateHireDates } from "./charter-lifecycle";
-import { requireVesselAuth, type VesselRequest } from "./vessel-auth-middleware";
+import { broadcastCharterUpdate } from "../lib/charter-socket.ts";
+import { canActivateCharter, validateHireDates } from "./charter-lifecycle.ts";
+import { requireVesselAuth, type VesselRequest } from "./vessel-auth-middleware.ts";
 
 const router: IRouter = Router();
 const ACTIVE_STATUSES = ["enquiry", "negotiating"] as const;
