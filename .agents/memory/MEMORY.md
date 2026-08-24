@@ -4,3 +4,4 @@
 - [Split ShipHub workspaces](split-shiphub-workspaces.md) — Owners and Charterers are separate role-specific frontends sharing one API and vessel database.
 - [Owners session expiry](owners-session-expiry.md) — catalogue access can survive an expired user session, so protected-request 401s must return users to sign-in.
 - [Charter confirmation order](charter-confirmation-order.md) — the owner responds to an enquiry first; charterer acceptance follows owner confirmation.
+- [Charter counter-offers](charter-counter-offers.md) — owner term updates preserve unchanged enquiry fields and notify the charterer to review.
