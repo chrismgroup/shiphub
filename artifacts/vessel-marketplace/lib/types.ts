@@ -154,7 +154,6 @@ export const VESSEL_TYPES = [
   'ASD',
   'FSPO',
   'FSO',
-  'TO',
   'Other',
 ] as const;
 
