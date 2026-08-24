@@ -82,8 +82,8 @@ export function AppLoadingScreen() {
         >
           <Image source={require('../assets/images/icon.png')} style={styles.logo} resizeMode="contain" />
         </Animated.View>
-        <Text style={[styles.name, { color: colors.primary }]}>SHIPHUB</Text>
-        <Text style={[styles.desk, { color: colors.mutedForeground }]}>CHARTERER DESK</Text>
+        <Text style={[styles.name, { color: colors.primary }]}>ShipHub</Text>
+        <Text style={[styles.desk, { color: colors.mutedForeground }]}>Chaterers Desk</Text>
       </View>
 
       <View style={[styles.route, { backgroundColor: colors.mapWaterDeep, borderColor: colors.border }]}>

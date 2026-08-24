@@ -106,8 +106,8 @@ export default function LoginScreen() {
             <Feather name="anchor" size={21} color={colors.primary} />
           </View>
           <View>
-            <Text style={[styles.brand, { color: colors.primary }]}>SHIPHUB</Text>
-            <Text style={[styles.deskLabel, { color: colors.mutedForeground }]}>CHARTERER DESK</Text>
+            <Text style={[styles.brand, { color: colors.primary }]}>ShipHub</Text>
+            <Text style={[styles.deskLabel, { color: colors.mutedForeground }]}>Chaterers Desk</Text>
           </View>
         </View>
         <Text style={[styles.welcomeTitle, { color: colors.foreground }]}>Welcome aboard.</Text>

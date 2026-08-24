@@ -166,7 +166,7 @@ export function NavigationMap({
 
       <View style={styles.chartHeader}>
         <View>
-          <Text style={[styles.chartEyebrow, { color: colors.mapPaperDim }]}>SHIPHUB · NORTH SEA</Text>
+          <Text style={[styles.chartEyebrow, { color: colors.mapPaperDim }]}>ShipHub · NORTH SEA</Text>
           <Text style={[styles.chartTitle, { color: colors.mapPaper }]}>{title}</Text>
         </View>
         <View style={[styles.chartSignal, { borderColor: colors.mapGrid, backgroundColor: colors.mapWaterDeep }]}>

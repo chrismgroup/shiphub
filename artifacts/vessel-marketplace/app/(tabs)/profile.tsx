@@ -118,7 +118,7 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.policyIntro}>
-        <Text style={[styles.sectionEyebrow, { color: colors.primary }]}>SHIPHUB INFORMATION</Text>
+        <Text style={[styles.sectionEyebrow, { color: colors.primary }]}>ShipHub information</Text>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Your account, clearly explained</Text>
         <Text style={[styles.sectionDescription, { color: colors.mutedForeground }]}>
           ShipHub is operated for Chrism Group (UK) Limited to support trusted vessel discovery and charter enquiries.
