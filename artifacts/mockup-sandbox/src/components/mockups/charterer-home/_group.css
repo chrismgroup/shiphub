@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+:root {
+  --shiphub-background: #f5f5f2;
+  --shiphub-card: #ffffff;
+  --shiphub-foreground: #111111;
+  --shiphub-primary: #a8d936;
+  --shiphub-primary-strong: #7aa51f;
+  --shiphub-muted: #ecece7;
+  --shiphub-muted-foreground: #70706a;
+  --shiphub-border: #d7d7d0;
+  font-family: 'DM Sans', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--shiphub-background);
+  color: var(--shiphub-foreground);
+}
+
+button,
+input {
+  font: inherit;
+}
