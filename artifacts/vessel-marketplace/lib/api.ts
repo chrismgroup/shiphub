@@ -13,9 +13,14 @@ import type {
 
 // Token provider — set by AuthContext on login
 let _tokenGetter: (() => string | null) | null = null;
+let _unauthorizedHandler: (() => void) | null = null;
 
 export function setTokenGetter(fn: (() => string | null) | null) {
   _tokenGetter = fn;
+}
+
+export function setUnauthorizedHandler(fn: (() => void) | null) {
+  _unauthorizedHandler = fn;
 }
 
 /** Returns the current auth token (used by the WebSocket hook). */
@@ -51,7 +56,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const data = await res.json().catch(() => ({ error: res.statusText }));
 
   if (!res.ok) {
-    const msg = data?.error || data?.message || `HTTP ${res.status}`;
+    if (res.status === 401) {
+      _unauthorizedHandler?.();
+    }
+    const msg =
+      res.status === 401
+        ? 'Your ShipHub session has expired. Please sign in again and resubmit your enquiry.'
+        : data?.error || data?.message || `HTTP ${res.status}`;
     throw new Error(msg);
   }
 

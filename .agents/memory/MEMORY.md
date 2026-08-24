@@ -2,3 +2,4 @@
 - [API integration test runner](api-integration-test-runner.md) — bundle HTTP integration tests as CommonJS to bridge workspace imports and Express dependencies.
 - [Vessel deletion policy](vessel-deletion-policy.md) — owner-requested listing deletion blocks active charters and removes only that vessel’s closed dependencies.
 - [Split ShipHub workspaces](split-shiphub-workspaces.md) — Owners and Charterers are separate role-specific frontends sharing one API and vessel database.
+- [Owners session expiry](owners-session-expiry.md) — catalogue access can survive an expired user session, so protected-request 401s must return users to sign-in.

@@ -7,7 +7,7 @@ import React, {
   useState,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api, setTokenGetter } from '@/lib/api';
+import { api, setTokenGetter, setUnauthorizedHandler } from '@/lib/api';
 import type { User } from '@/lib/types';
 
 // Auth now belongs to the Owners API. Version the keys so stale tokens issued
@@ -108,6 +108,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     setUser(null);
   }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      void logout();
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [logout]);
 
   return (
     <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
