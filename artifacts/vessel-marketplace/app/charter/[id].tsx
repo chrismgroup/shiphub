@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -66,6 +67,11 @@ export default function CharterDetailScreen() {
     queryFn: () => api.charters.offers(charterId),
     enabled: charterId > 0,
   });
+  const { data: agreement } = useQuery({
+    queryKey: ['charter-agreement', charterId],
+    queryFn: () => api.charters.agreement(charterId),
+    enabled: charterId > 0 && !!cp && ['confirmed', 'active'].includes(cp.status),
+  });
 
   // Live updates via WebSocket — invalidates this charter whenever the server
   // pushes an update for it, so no polling needed.
@@ -81,6 +87,19 @@ export default function CharterDetailScreen() {
     qc.invalidateQueries({ queryKey: ['charter', charterId] });
     qc.invalidateQueries({ queryKey: ['charter-parties'] });
     qc.invalidateQueries({ queryKey: ['charter-offers', charterId] });
+    qc.invalidateQueries({ queryKey: ['charter-agreement', charterId] });
+  }
+
+  function openAgreement() {
+    if (!agreement) return;
+    const url = `data:text/html;charset=utf-8,${encodeURIComponent(agreement.content)}`;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Agreement ready', `${agreement.agreementNumber} was generated successfully.`);
+    });
   }
 
   const confirmMutation = useMutation({
@@ -266,6 +285,29 @@ export default function CharterDetailScreen() {
             </View>
 
             <OfferTimeline offers={offers ?? []} colors={colors} />
+
+            {agreement && (
+              <View style={[styles.agreementCard, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                <View style={styles.agreementIcon}>
+                  <Feather name="file-text" size={20} color={colors.accent} />
+                </View>
+                <View style={styles.agreementBody}>
+                  <Text style={[styles.agreementTitle, { color: colors.foreground }]}>
+                    Charter party agreement ready
+                  </Text>
+                  <Text style={[styles.agreementMeta, { color: colors.mutedForeground }]}>
+                    {agreement.agreementNumber} · Generated {fmtDateTime(agreement.generatedAt)}
+                  </Text>
+                  <Text style={[styles.agreementDescription, { color: colors.foreground }]}>
+                    Both parties accepted the latest offer. This agreement contains the final agreed terms.
+                  </Text>
+                  <Pressable onPress={openAgreement} style={[styles.agreementBtn, { borderColor: colors.accent }]}>
+                    <Feather name="external-link" size={15} color={colors.accent} />
+                    <Text style={[styles.agreementBtnText, { color: colors.accent }]}>View agreement</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
 
             {/* Hire info */}
             {(cp.hireStart || cp.hireEnd) && (
@@ -649,6 +691,14 @@ const styles = StyleSheet.create({
   offerId: { fontFamily: 'Inter_500Medium', fontSize: 11 },
   offerDate: { fontFamily: 'Inter_400Regular', fontSize: 11 },
   offerTerms: { gap: 4, borderTopWidth: 1, borderTopColor: '#dfe6ec', paddingTop: 7 },
+  agreementCard: { flexDirection: 'row', gap: 12, borderRadius: 12, borderWidth: 1, padding: 14 },
+  agreementIcon: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffffaa' },
+  agreementBody: { flex: 1, gap: 6 },
+  agreementTitle: { fontFamily: 'Inter_700Bold', fontSize: 14 },
+  agreementMeta: { fontFamily: 'Inter_500Medium', fontSize: 11 },
+  agreementDescription: { fontFamily: 'Inter_400Regular', fontSize: 12, lineHeight: 18 },
+  agreementBtn: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, marginTop: 2 },
+  agreementBtnText: { fontFamily: 'Inter_600SemiBold', fontSize: 12 },
   field: { gap: 6 },
   dateStack: { gap: 12 },
   fieldLabel: { fontFamily: 'Inter_500Medium', fontSize: 14 },

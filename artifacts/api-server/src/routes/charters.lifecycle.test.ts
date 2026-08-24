@@ -10,6 +10,7 @@ process.env.SESSION_SECRET ??= "charter-lifecycle-test-secret";
 import { and, eq, inArray } from "drizzle-orm";
 import app from "../app.ts";
 import {
+  charterAgreementsTable,
   charterOffersTable,
   charterPartiesTable,
   db,
@@ -159,6 +160,21 @@ test("owner must respond before the charterer can confirm an enquiry", async () 
     );
     assert.equal(chartererResponse.status, 200);
     assert.equal(chartererResponse.body.status, "confirmed");
+
+    const [agreement] = await db.select().from(charterAgreementsTable)
+      .where(eq(charterAgreementsTable.charterId, fixture.charter.id));
+    assert.ok(agreement);
+    assert.equal(agreement.agreementNumber, `CHP-${fixture.charter.id}`);
+    assert.match(agreement.content, /Charter Party Agreement/);
+    assert.match(agreement.content, /Mutual acceptance recorded/);
+
+    const agreementResponse = await fetch(
+      `${baseUrl}/api/charter-parties/${fixture.charter.id}/agreement`,
+      { headers: { authorization: `Bearer ${fixture.chartererToken}` } },
+    );
+    const agreementBody = await agreementResponse.json() as Record<string, unknown>;
+    assert.equal(agreementResponse.status, 200);
+    assert.equal(agreementBody.agreementNumber, agreement.agreementNumber);
   } finally {
     await fixture.cleanup();
   }

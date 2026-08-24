@@ -6,3 +6,4 @@
 - [Charter confirmation order](charter-confirmation-order.md) — the owner responds to an enquiry first; charterer acceptance follows owner confirmation.
 - [Charter counter-offers](charter-counter-offers.md) — owner term updates preserve unchanged enquiry fields and notify the charterer to review.
 - [Charter offer ledger](charter-offer-ledger.md) — negotiations keep immutable full-term snapshots linked in sequence; the charter row remains the latest snapshot.
+- [Final charter agreement](final-charter-agreement.md) — mutual confirmation creates one persisted agreement from the accepted offer; activation does not rewrite it.

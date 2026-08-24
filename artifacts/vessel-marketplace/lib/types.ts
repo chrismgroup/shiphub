@@ -108,6 +108,14 @@ export interface CharterOffer {
   createdAt: string;
 }
 
+export interface CharterAgreement {
+  id: number;
+  charterId: number;
+  agreementNumber: string;
+  content: string;
+  generatedAt: string;
+}
+
 export interface VesselNotification {
   id: number;
   userId: number;

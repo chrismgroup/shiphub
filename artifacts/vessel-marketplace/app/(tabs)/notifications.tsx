@@ -24,6 +24,7 @@ const TYPE_ICONS: Record<string, string> = {
   charter_active: 'anchor',
   charter_declined: 'x-circle',
   charter_terminated: 'slash',
+  charter_agreement_ready: 'file-text',
 };
 
 function timeAgo(dateStr: string): string {
