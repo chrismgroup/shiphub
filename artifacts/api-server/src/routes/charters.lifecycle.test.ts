@@ -163,6 +163,54 @@ test("owner must respond before the charterer can confirm an enquiry", async () 
   }
 });
 
+test("owner can send a counter-offer and notify the charterer", async () => {
+  const fixture = await createFixture();
+  try {
+    await db.update(charterPartiesTable)
+      .set({
+        status: "enquiry",
+        rate: "5000",
+        rateCurrency: "USD",
+        rateBasis: "Per Day",
+        terms: "Initial terms",
+        ownerConfirmedAt: null,
+        chartererConfirmedAt: null,
+      })
+      .where(eq(charterPartiesTable.id, fixture.charter.id));
+
+    const result = await fetch(`${baseUrl}/api/charter-parties/${fixture.charter.id}`, {
+      method: "PUT",
+      headers: {
+        authorization: `Bearer ${fixture.ownerToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        rate: "7500",
+        terms: "Owner counter-offer: weather downtime excluded.",
+      }),
+    });
+    const body = await result.json() as Record<string, unknown>;
+
+    assert.equal(result.status, 200);
+    assert.equal(body.rate, "7500");
+    assert.equal(body.rateBasis, "Per Day");
+    assert.equal(body.terms, "Owner counter-offer: weather downtime excluded.");
+    assert.equal(body.status, "negotiating");
+    assert.equal(body.ownerConfirmedAt, null);
+    assert.equal(body.chartererConfirmedAt, null);
+
+    const notifications = await db.select().from(vesselNotificationsTable).where(and(
+      eq(vesselNotificationsTable.userId, fixture.chartererUser.id),
+      eq(vesselNotificationsTable.relatedId, fixture.charter.id),
+      eq(vesselNotificationsTable.type, "terms_updated"),
+    ));
+    assert.equal(notifications.length, 1);
+    assert.match(notifications[0].message, /revised terms/);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
 test("only the vessel owner or an admin can activate", () => {
   assert.equal(canActivateCharter(owner, charter), true);
   assert.equal(canActivateCharter(admin, charter), true);

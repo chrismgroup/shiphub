@@ -292,17 +292,21 @@ router.put("/charter-parties/:id", async (req: VesselRequest, res): Promise<void
     res.status(400).json({ error: terms.error });
     return;
   }
+  const isOwner = req.vesselAuth!.userId === charter.ownerId;
   await db
     .update(charterPartiesTable)
     .set({
-      rate: terms.rate,
+      rate: body.rate === undefined ? charter.rate : terms.rate,
       rateCurrency: terms.rateCurrency ?? charter.rateCurrency,
-      rateBasis: terms.rateBasis,
-      laycanEarliest: terms.laycanEarliest,
-      laycanLatest: terms.laycanLatest,
-      durationDays: terms.durationDays,
-      cargoPurpose: stringValue(body.cargoPurpose),
-      terms: stringValue(body.terms),
+      rateBasis: body.rateBasis === undefined ? charter.rateBasis : terms.rateBasis,
+      laycanEarliest:
+        body.laycanEarliest === undefined ? charter.laycanEarliest : terms.laycanEarliest,
+      laycanLatest:
+        body.laycanLatest === undefined ? charter.laycanLatest : terms.laycanLatest,
+      durationDays: body.durationDays === undefined ? charter.durationDays : terms.durationDays,
+      cargoPurpose:
+        body.cargoPurpose === undefined ? charter.cargoPurpose : stringValue(body.cargoPurpose),
+      terms: body.terms === undefined ? charter.terms : stringValue(body.terms),
       status: "negotiating",
       ownerConfirmedAt: null,
       chartererConfirmedAt: null,
@@ -310,6 +314,15 @@ router.put("/charter-parties/:id", async (req: VesselRequest, res): Promise<void
     })
     .where(eq(charterPartiesTable.id, id));
   broadcastCharterUpdate(id);
+  await notify(
+    isOwner ? charter.chartererId : charter.ownerId,
+    "terms_updated",
+    isOwner ? "Owner sent revised charter terms" : "Charterer updated the enquiry",
+    isOwner
+      ? `The ship owner sent revised terms for ${charter.vesselName}. Review the new amount and conditions before confirming.`
+      : `The charterer updated the enquiry for ${charter.vesselName}. Review the revised terms.`,
+    id,
+  );
   res.json(serializeCharter((await findCharter(id))!));
 });
 
