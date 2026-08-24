@@ -14,6 +14,7 @@ import {
 import { Redirect, Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { AppLoadingScreen } from '@/components/AppLoadingScreen';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -50,6 +51,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 function RootLayoutNav() {
+  const { isLoading } = useAuth();
+
+  if (isLoading) return <AppLoadingScreen />;
+
   return (
     <AuthGuard>
       <Stack screenOptions={{ headerShown: false }}>
