@@ -108,7 +108,7 @@ export default function BrowseScreen() {
               </View>
               <View style={styles.brandCopy}>
                 <Text style={[styles.subtitle, { color: colors.primary }]}>ShipHub Charterer</Text>
-                <Text style={[styles.title, { color: colors.foreground }]}>Find the next move.</Text>
+                <Text style={[styles.title, { color: colors.foreground }]}>Find the right vessel</Text>
               </View>
               <Pressable
                 accessibilityLabel="Toggle vessel filters"
