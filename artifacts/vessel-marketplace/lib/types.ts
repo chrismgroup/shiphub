@@ -148,6 +148,13 @@ export const VESSEL_TYPES = [
   'Offshore Supply Vessel',
   'Passenger',
   'Tugboat',
+  'Flat Bottom Barge',
+  'Pilot Boat',
+  'AHTS',
+  'ASD',
+  'FSPO',
+  'FSO',
+  'TO',
   'Other',
 ] as const;
 
