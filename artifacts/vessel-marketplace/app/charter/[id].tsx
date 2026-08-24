@@ -150,8 +150,12 @@ export default function CharterDetailScreen() {
 
   const isOwner = user?.id === cp.ownerId || user?.role === 'admin';
   const isCharterer = user?.id === cp.chartererId;
-  const canEdit = (isOwner || isCharterer) && ['enquiry', 'negotiating'].includes(cp.status);
-  const canConfirm = (isOwner || isCharterer) && ['enquiry', 'negotiating'].includes(cp.status);
+  const isOpen = ['enquiry', 'negotiating'].includes(cp.status);
+  const canEdit = (isOwner || isCharterer) && isOpen;
+  const canConfirm =
+    isOpen &&
+    ((isOwner && !cp.ownerConfirmedAt) ||
+      (isCharterer && !!cp.ownerConfirmedAt && !cp.chartererConfirmedAt));
   const canDecline = (isOwner || isCharterer) && ['enquiry', 'negotiating'].includes(cp.status);
   const canActivate = isOwner && cp.status === 'confirmed';
   const canTerminate = isOwner && cp.status === 'active';
@@ -250,13 +254,33 @@ export default function CharterDetailScreen() {
             )}
 
             {/* Confirmation status */}
+            {cp.status === 'enquiry' && (
+              <View style={[styles.confirmStatus, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                <Feather name="send" size={14} color={colors.accent} />
+                <Text style={[styles.confirmText, { color: colors.foreground }]}>
+                  {isOwner
+                    ? 'New enquiry received. Review the terms and confirm or decline this request.'
+                    : 'Enquiry sent to the ship owner. Waiting for the owner to review and respond.'}
+                </Text>
+              </View>
+            )}
             {cp.status === 'negotiating' && (
               <View style={[styles.confirmStatus, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
                 <Feather name="info" size={14} color={colors.accent} />
                 <Text style={[styles.confirmText, { color: colors.foreground }]}>
-                  Owner confirmed: {cp.ownerConfirmedAt ? '✓' : 'Pending'}
-                  {'  '}
-                  Charterer confirmed: {cp.chartererConfirmedAt ? '✓' : 'Pending'}
+                  {isCharterer && !cp.ownerConfirmedAt
+                    ? 'Waiting for the ship owner to review and respond.'
+                    : `Owner confirmed: ${cp.ownerConfirmedAt ? '✓' : 'Pending'}  Charterer confirmed: ${
+                        cp.chartererConfirmedAt ? '✓' : 'Pending'
+                      }`}
+                </Text>
+              </View>
+            )}
+            {cp.status === 'confirmed' && (
+              <View style={[styles.confirmStatus, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                <Feather name="check-circle" size={14} color={colors.statusActive} />
+                <Text style={[styles.confirmText, { color: colors.foreground }]}>
+                  Both parties confirmed the terms. {isOwner ? 'You can now start the hire.' : 'Waiting for the owner to start the hire.'}
                 </Text>
               </View>
             )}

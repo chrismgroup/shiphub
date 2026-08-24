@@ -327,6 +327,12 @@ router.post("/charter-parties/:id/confirm", async (req: VesselRequest, res): Pro
 
   const now = new Date();
   const isOwner = req.vesselAuth!.userId === charter.ownerId;
+  if (!isOwner && !charter.ownerConfirmedAt) {
+    res.status(409).json({
+      error: "The ship owner must confirm the enquiry before you can confirm it",
+    });
+    return;
+  }
   const nextOwnerConfirmedAt = isOwner ? now : charter.ownerConfirmedAt;
   const nextChartererConfirmedAt = isOwner ? charter.chartererConfirmedAt : now;
   const nextStatus = nextOwnerConfirmedAt && nextChartererConfirmedAt ? "confirmed" : "negotiating";
@@ -345,7 +351,9 @@ router.post("/charter-parties/:id/confirm", async (req: VesselRequest, res): Pro
     isOwner ? charter.chartererId : charter.ownerId,
     "terms_updated",
     "Charter confirmation updated",
-    `${isOwner ? "The owner" : "The charterer"} confirmed the terms for ${charter.vesselName}.`,
+    isOwner
+      ? `The ship owner confirmed the terms for ${charter.vesselName}. Review and confirm the enquiry if you accept them.`
+      : `The charterer accepted the owner-confirmed terms for ${charter.vesselName}.`,
     id,
   );
   res.json(serializeCharter((await findCharter(id))!));

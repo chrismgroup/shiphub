@@ -115,6 +115,7 @@ async function createFixture() {
     vessel,
     charter,
     ownerToken: token(ownerUser),
+    chartererToken: token(chartererUser),
     cleanup: async () => {
       await db.delete(charterPartiesTable).where(eq(charterPartiesTable.id, charter.id));
       await db.delete(vesselsTable).where(eq(vesselsTable.id, vessel.id));
@@ -122,6 +123,45 @@ async function createFixture() {
     },
   };
 }
+
+test("owner must respond before the charterer can confirm an enquiry", async () => {
+  const fixture = await createFixture();
+  try {
+    await db.update(charterPartiesTable)
+      .set({
+        status: "enquiry",
+        ownerConfirmedAt: null,
+        chartererConfirmedAt: null,
+      })
+      .where(eq(charterPartiesTable.id, fixture.charter.id));
+
+    const blocked = await request(
+      `/api/charter-parties/${fixture.charter.id}/confirm`,
+      fixture.chartererToken,
+    );
+    assert.equal(blocked.status, 409);
+    assert.equal(
+      blocked.body.error,
+      "The ship owner must confirm the enquiry before you can confirm it",
+    );
+
+    const ownerResponse = await request(
+      `/api/charter-parties/${fixture.charter.id}/confirm`,
+      fixture.ownerToken,
+    );
+    assert.equal(ownerResponse.status, 200);
+    assert.equal(ownerResponse.body.status, "negotiating");
+
+    const chartererResponse = await request(
+      `/api/charter-parties/${fixture.charter.id}/confirm`,
+      fixture.chartererToken,
+    );
+    assert.equal(chartererResponse.status, 200);
+    assert.equal(chartererResponse.body.status, "confirmed");
+  } finally {
+    await fixture.cleanup();
+  }
+});
 
 test("only the vessel owner or an admin can activate", () => {
   assert.equal(canActivateCharter(owner, charter), true);
