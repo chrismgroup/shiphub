@@ -16,6 +16,14 @@ import { getToken } from '@/lib/api';
 
 function getWsUrl(token: string): string {
   const encodedToken = encodeURIComponent(token);
+  const ownersApiUrl = process.env.EXPO_PUBLIC_OWNERS_API_BASE_URL;
+  if (ownersApiUrl) {
+    const apiUrl = new URL(ownersApiUrl);
+    const protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+    const apiPath = apiUrl.pathname.replace(/\/+$/, '');
+    return `${protocol}//${apiUrl.host}${apiPath}/ws/charters?token=${encodedToken}`;
+  }
+
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
 
   if (domain) {

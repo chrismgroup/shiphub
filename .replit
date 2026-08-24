@@ -26,3 +26,4 @@ channel = "stable-25_05"
 
 [userenv.shared]
 SHIPHUB_OWNERS_API_BASE_URL = "https://shiphub.replit.app/api"
+EXPO_PUBLIC_OWNERS_API_BASE_URL = "https://shiphub.replit.app/api"

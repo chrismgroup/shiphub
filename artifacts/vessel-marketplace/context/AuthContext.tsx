@@ -10,8 +10,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, setTokenGetter } from '@/lib/api';
 import type { User } from '@/lib/types';
 
-const TOKEN_KEY = 'shiphub_charterer_auth_token';
-const USER_KEY = 'shiphub_charterer_auth_user';
+// Auth now belongs to the Owners API. Version the keys so stale tokens issued
+// by the retired local service cannot be sent to the external marketplace.
+const TOKEN_KEY = 'shiphub_charterer_owners_auth_token';
+const USER_KEY = 'shiphub_charterer_owners_auth_user';
 
 interface AuthContextValue {
   user: User | null;
