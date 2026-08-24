@@ -25,8 +25,9 @@ type PolicyKey = 'about' | 'use' | 'privacy' | 'support';
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const [expandedPolicy, setExpandedPolicy] = useState<PolicyKey | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const topInset = Platform.OS === 'web' ? 67 : insets.top;
 
@@ -42,6 +43,30 @@ export default function ProfileScreen() {
         },
       },
     ]);
+  }
+
+  function confirmDeleteAccount() {
+    Alert.alert(
+      'Delete account',
+      'This permanently deletes your account, listings, enquiries, offer history, agreements, and notifications. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await deleteAccount();
+              router.replace('/auth/login');
+            } catch (error) {
+              setIsDeleting(false);
+              Alert.alert('Account not deleted', error instanceof Error ? error.message : 'Please try again.');
+            }
+          },
+        },
+      ],
+    );
   }
 
   if (!user) return null;
@@ -178,6 +203,22 @@ export default function ProfileScreen() {
       >
         <Feather name="log-out" size={18} color={colors.destructive} />
         <Text style={[styles.logoutText, { color: colors.destructive }]}>Sign Out</Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Delete account"
+        disabled={isDeleting}
+        onPress={confirmDeleteAccount}
+        style={({ pressed }) => [
+          styles.deleteAccountBtn,
+          { borderColor: colors.destructive, opacity: pressed || isDeleting ? 0.55 : 1 },
+        ]}
+      >
+        <Feather name="trash-2" size={17} color={colors.destructive} />
+        <Text style={[styles.deleteAccountText, { color: colors.destructive }]}>
+          {isDeleting ? 'Deleting account…' : 'Delete account'}
+        </Text>
       </Pressable>
     </ScrollView>
   );
@@ -362,4 +403,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   logoutText: { fontFamily: 'Inter_600SemiBold', fontSize: 15 },
+  deleteAccountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  deleteAccountText: { fontFamily: 'Inter_600SemiBold', fontSize: 14 },
 });

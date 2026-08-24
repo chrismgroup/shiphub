@@ -29,6 +29,7 @@ interface AuthContextValue {
     phone?: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -109,6 +110,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    await api.auth.deleteAccount();
+    await logout();
+  }, [logout]);
+
   useEffect(() => {
     setUnauthorizedHandler(() => {
       void logout();
@@ -117,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [logout]);
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );

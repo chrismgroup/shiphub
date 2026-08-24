@@ -93,6 +93,10 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+    deleteAccount: () =>
+      request<void>('/vessels/auth/account', {
+        method: 'DELETE',
+      }),
   },
 
   // ── VESSELS ──────────────────────────────────────────────────────────────

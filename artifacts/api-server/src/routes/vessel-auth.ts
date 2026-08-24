@@ -1,8 +1,19 @@
 import { createHmac, randomBytes, scrypt as nodeScrypt } from "node:crypto";
 import { promisify } from "node:util";
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
-import { db, vesselUsersTable } from "@workspace/db";
+import { and, eq, inArray, or } from "drizzle-orm";
+import {
+  db,
+  charterAgreementsTable,
+  charterOffersTable,
+  charterPartiesTable,
+  vesselContactsTable,
+  vesselNotificationsTable,
+  vesselPhotosTable,
+  vesselsTable,
+  vesselUsersTable,
+} from "@workspace/db";
+import { requireVesselAuth, type VesselRequest } from "./vessel-auth-middleware.ts";
 
 const router: IRouter = Router();
 const scrypt = promisify(nodeScrypt);
@@ -147,6 +158,66 @@ router.post("/vessels/auth/login", async (req, res): Promise<void> => {
   }
 
   res.json({ token: signToken(user), user: safeUser(user) });
+});
+
+router.delete("/vessels/auth/account", requireVesselAuth, async (req: VesselRequest, res): Promise<void> => {
+  const userId = req.vesselAuth!.userId;
+  const ownedVessels = await db
+    .select({ id: vesselsTable.id })
+    .from(vesselsTable)
+    .where(eq(vesselsTable.ownerId, userId));
+  const ownedVesselIds = ownedVessels.map(({ id }) => id);
+
+  const activeCharters = await db
+    .select({ id: charterPartiesTable.id })
+    .from(charterPartiesTable)
+    .where(
+      and(
+        eq(charterPartiesTable.status, "active"),
+        or(
+          eq(charterPartiesTable.chartererId, userId),
+          eq(charterPartiesTable.ownerId, userId),
+          ownedVesselIds.length ? inArray(charterPartiesTable.vesselId, ownedVesselIds) : undefined,
+        ),
+      ),
+    )
+    .limit(1);
+  if (activeCharters.length) {
+    res.status(409).json({
+      error: "Your account cannot be deleted while you have an active charter. Terminate the hire first.",
+    });
+    return;
+  }
+
+  const relatedCharters = await db
+    .select({ id: charterPartiesTable.id })
+    .from(charterPartiesTable)
+    .where(
+      or(
+        eq(charterPartiesTable.chartererId, userId),
+        eq(charterPartiesTable.ownerId, userId),
+        ownedVesselIds.length ? inArray(charterPartiesTable.vesselId, ownedVesselIds) : undefined,
+      ),
+    );
+  const relatedCharterIds = relatedCharters.map(({ id }) => id);
+
+  await db.transaction(async (tx) => {
+    if (relatedCharterIds.length) {
+      await tx.delete(charterAgreementsTable).where(inArray(charterAgreementsTable.charterId, relatedCharterIds));
+      await tx.delete(charterOffersTable).where(inArray(charterOffersTable.charterId, relatedCharterIds));
+      await tx.delete(charterPartiesTable).where(inArray(charterPartiesTable.id, relatedCharterIds));
+    }
+    await tx.delete(charterOffersTable).where(eq(charterOffersTable.actorId, userId));
+    await tx.delete(vesselNotificationsTable).where(eq(vesselNotificationsTable.userId, userId));
+    if (ownedVesselIds.length) {
+      await tx.delete(vesselContactsTable).where(inArray(vesselContactsTable.vesselId, ownedVesselIds));
+      await tx.delete(vesselPhotosTable).where(inArray(vesselPhotosTable.vesselId, ownedVesselIds));
+      await tx.delete(vesselsTable).where(inArray(vesselsTable.id, ownedVesselIds));
+    }
+    await tx.delete(vesselUsersTable).where(eq(vesselUsersTable.id, userId));
+  });
+
+  res.status(204).send();
 });
 
 export default router;
