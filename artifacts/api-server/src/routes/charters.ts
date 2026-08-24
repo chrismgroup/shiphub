@@ -4,6 +4,7 @@ import { Router, type IRouter } from "express";
 import {
   charterPartiesTable,
   charterOffersTable,
+  charterAgreementsTable,
   db,
   vesselNotificationsTable,
   vesselUsersTable,
@@ -101,6 +102,80 @@ function serializeOffer(offer: Record<string, unknown>) {
       value instanceof Date ? value.toISOString() : value,
     ]),
   );
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? "—")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function agreementDate(value: unknown): string {
+  if (!(value instanceof Date)) return "—";
+  return value.toLocaleString("en-GB", {
+    dateStyle: "long",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }) + " UTC";
+}
+
+function agreementHtml(charter: Record<string, any>, agreementNumber: string): string {
+  const rows = [
+    ["Vessel", charter.vesselName],
+    ["Charterer", charter.chartererName],
+    ["Ship owner", charter.ownerName],
+    ["Agreed amount", charter.rate ? `${charter.rate} ${charter.rateCurrency ?? ""}` : null],
+    ["Rate basis", charter.rateBasis],
+    ["Earliest laycan", agreementDate(charter.laycanEarliest)],
+    ["Latest laycan", agreementDate(charter.laycanLatest)],
+    ["Duration", charter.durationDays ? `${charter.durationDays} days` : null],
+    ["Cargo / purpose", charter.cargoPurpose],
+  ];
+  const rowHtml = rows
+    .map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)
+    .join("");
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>${escapeHtml(agreementNumber)}</title>
+<style>
+body{font-family:Arial,sans-serif;color:#102a43;max-width:820px;margin:40px auto;padding:0 28px;line-height:1.5}
+h1{margin-bottom:4px} .meta{color:#52606d;margin-bottom:28px} table{border-collapse:collapse;width:100%;margin:18px 0 28px}
+th,td{text-align:left;border:1px solid #d9e2ec;padding:10px} th{width:32%;background:#f0f4f8}
+.terms{white-space:pre-wrap;border:1px solid #d9e2ec;padding:14px;min-height:80px}
+.confirm{margin-top:28px;padding:14px;background:#e6fffa;border:1px solid #81e6d9}
+small{color:#627d98}
+</style></head><body>
+<h1>Charter Party Agreement</h1>
+<div class="meta">${escapeHtml(agreementNumber)} · Generated ${escapeHtml(agreementDate(new Date()))}</div>
+<p>This agreement records the charter terms accepted by both parties through ShipHub.</p>
+<table>${rowHtml}</table>
+<h2>Terms and conditions</h2>
+<div class="terms">${escapeHtml(charter.terms)}</div>
+<div class="confirm"><strong>Mutual acceptance recorded</strong><br>
+Owner confirmed: ${escapeHtml(agreementDate(charter.ownerConfirmedAt))}<br>
+Charterer confirmed: ${escapeHtml(agreementDate(charter.chartererConfirmedAt))}</div>
+<p><small>This document is generated from the final offer accepted by both parties. Parties should review it against any separately signed contractual documents.</small></p>
+</body></html>`;
+}
+
+async function ensureAgreement(charter: Record<string, any>) {
+  const [existing] = await db
+    .select()
+    .from(charterAgreementsTable)
+    .where(eq(charterAgreementsTable.charterId, charter.id));
+  if (existing) return existing;
+  const agreementNumber = `CHP-${charter.id}`;
+  const [created] = await db
+    .insert(charterAgreementsTable)
+    .values({
+      charterId: charter.id,
+      agreementNumber,
+      content: agreementHtml(charter, agreementNumber),
+    })
+    .returning();
+  return created;
 }
 
 async function getOfferHistory(charterId: number) {
@@ -360,6 +435,27 @@ router.get("/charter-parties/:id/offers", async (req: VesselRequest, res): Promi
   res.json(await ensureBaselineOffer(charter));
 });
 
+router.get("/charter-parties/:id/agreement", async (req: VesselRequest, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const charter = Number.isInteger(id) && id > 0 ? await findCharter(id) : undefined;
+  if (!charter || !(await canViewCharter(req, charter))) {
+    res.status(404).json({ error: "Charter not found" });
+    return;
+  }
+  if (charter.status !== "confirmed" && charter.status !== "active") {
+    res.status(409).json({ error: "The agreement is generated after both parties confirm" });
+    return;
+  }
+  const agreement = await ensureAgreement(charter);
+  res.json({
+    id: agreement.id,
+    charterId: agreement.charterId,
+    agreementNumber: agreement.agreementNumber,
+    content: agreement.content,
+    generatedAt: agreement.generatedAt.toISOString(),
+  });
+});
+
 router.put("/charter-parties/:id", async (req: VesselRequest, res): Promise<void> => {
   const id = Number(req.params.id);
   const charter = Number.isInteger(id) && id > 0 ? await findCharter(id) : undefined;
@@ -466,16 +562,37 @@ router.post("/charter-parties/:id/confirm", async (req: VesselRequest, res): Pro
     .where(eq(charterPartiesTable.id, id));
   broadcastCharterUpdate(id);
 
-  await notify(
-    isOwner ? charter.chartererId : charter.ownerId,
-    "terms_updated",
-    "Charter confirmation updated",
-    isOwner
-      ? `The ship owner confirmed the terms for ${charter.vesselName}. Review and confirm the enquiry if you accept them.`
-      : `The charterer accepted the owner-confirmed terms for ${charter.vesselName}.`,
-    id,
-  );
-  res.json(serializeCharter((await findCharter(id))!));
+  const updatedCharter = await findCharter(id);
+  if (nextStatus === "confirmed") {
+    const agreement = await ensureAgreement(updatedCharter!);
+    await Promise.all([
+      notify(
+        charter.ownerId,
+        "charter_agreement_ready",
+        "Charter party agreement ready",
+        `Both parties accepted the terms for ${charter.vesselName}. Agreement ${agreement.agreementNumber} is ready to review.`,
+        id,
+      ),
+      notify(
+        charter.chartererId,
+        "charter_agreement_ready",
+        "Charter party agreement ready",
+        `Both parties accepted the terms for ${charter.vesselName}. Agreement ${agreement.agreementNumber} is ready to review.`,
+        id,
+      ),
+    ]);
+  } else {
+    await notify(
+      isOwner ? charter.chartererId : charter.ownerId,
+      "terms_updated",
+      "Charter confirmation updated",
+      isOwner
+        ? `The ship owner confirmed the terms for ${charter.vesselName}. Review and confirm the enquiry if you accept them.`
+        : `The charterer accepted the owner-confirmed terms for ${charter.vesselName}.`,
+      id,
+    );
+  }
+  res.json(serializeCharter(updatedCharter!));
 });
 
 router.post("/charter-parties/:id/decline", async (req: VesselRequest, res): Promise<void> => {

@@ -150,6 +150,25 @@ export const charterOffersTable = pgTable(
   ],
 );
 
+export const charterAgreementsTable = pgTable(
+  "charter_agreements",
+  {
+    id: serial("id").primaryKey(),
+    charterId: integer("charter_id")
+      .notNull()
+      .unique()
+      .references(() => charterPartiesTable.id, { onDelete: "cascade" }),
+    agreementNumber: text("agreement_number").notNull().unique(),
+    content: text("content").notNull(),
+    generatedAt: timestamp("generated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("charter_agreements_charter_id_idx").on(table.charterId),
+  ],
+);
+
 export const vesselNotificationsTable = pgTable(
   "vessel_notifications",
   {
