@@ -154,7 +154,7 @@ export default function BrowseScreen() {
             {showFilters ? (
               <View style={[styles.filtersSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Text style={[styles.filterLabel, { color: colors.mutedForeground }]}>Vessel type</Text>
-                <View style={styles.verticalChipList}>
+                <View style={styles.horizontalChipGrid}>
                   {VESSEL_TYPE_FILTERS.map((item) => {
                     const selected = vesselType === item;
                     return (
@@ -163,7 +163,7 @@ export default function BrowseScreen() {
                         onPress={() => setVesselType(item)}
                         style={[
                           styles.chip,
-                          styles.verticalChip,
+                          styles.horizontalChip,
                           {
                             backgroundColor: selected ? colors.primary : colors.muted,
                             borderColor: selected ? colors.primary : colors.border,
@@ -178,7 +178,7 @@ export default function BrowseScreen() {
                   })}
                 </View>
                 <Text style={[styles.filterLabel, { color: colors.mutedForeground, marginTop: 12 }]}>Availability</Text>
-                <View style={styles.verticalChipList}>
+                <View style={styles.horizontalChipGrid}>
                   {STATUSES.map((item) => {
                     const selected = status === item;
                     return (
@@ -187,7 +187,7 @@ export default function BrowseScreen() {
                         onPress={() => setStatus(item)}
                         style={[
                           styles.chip,
-                          styles.verticalChip,
+                          styles.horizontalChip,
                           {
                             backgroundColor: selected ? colors.accent : colors.muted,
                             borderColor: selected ? colors.accent : colors.border,
@@ -371,8 +371,8 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   chipText: { fontFamily: 'Inter_500Medium', fontSize: 12 },
-  verticalChipList: { gap: 7 },
-  verticalChip: { width: '100%', minHeight: 38, justifyContent: 'center' },
+  horizontalChipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  horizontalChip: { minHeight: 38, justifyContent: 'center' },
   selectedPanel: {
     flexDirection: 'row',
     alignItems: 'center',
