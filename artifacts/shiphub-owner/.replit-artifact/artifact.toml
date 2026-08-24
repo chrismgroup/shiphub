@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/shiphub-owner/"
+title = "ShipHub Owners"
+description = "A mobile owner operations app for ship owners and administrators to register vessels, manage fleet listings, and handle charter enquiries through the shared ShipHub API."
+version = "1.0.0"
+id = "artifacts/shiphub-owner"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/shiphub-owner/" ]
+localPort = 24420
+
+[services.development]
+run = "pnpm --filter @workspace/shiphub-owner run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/shiphub-owner", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/shiphub-owner", "run", "serve" ]
+
+[services.env]
+PORT = "24420"
+BASE_PATH = "/shiphub-owner/"
