@@ -10,7 +10,7 @@ export interface User {
   createdAt: string;
 }
 
-export type VesselStatus = 'available' | 'on_hire' | 'laid_up' | 'decommissioned';
+export type VesselStatus = 'available' | 'for_sale' | 'on_hire' | 'laid_up' | 'decommissioned';
 
 export interface Vessel {
   id: number;

@@ -11,7 +11,7 @@ import {
 import { isAdminOrOwner, requireVesselAuth, type VesselRequest } from "./vessel-auth-middleware.ts";
 
 const router: IRouter = Router();
-const VESSEL_STATUSES = ["available", "on_hire", "laid_up", "decommissioned"] as const;
+const VESSEL_STATUSES = ["available", "for_sale", "on_hire", "laid_up", "decommissioned"] as const;
 
 function stringValue(value: unknown): string | null {
   if (typeof value !== "string") return null;

@@ -7,6 +7,7 @@ type Status = VesselStatus | CharterStatus;
 
 const LABELS: Record<Status, string> = {
   available: 'Available',
+  for_sale: 'For Sale',
   on_hire: 'On Hire',
   laid_up: 'Laid Up',
   decommissioned: 'Decommissioned',
@@ -29,6 +30,7 @@ export function StatusBadge({ status, size = 'md' }: Props) {
 
   const colorMap: Record<Status, { text: string; bg: string }> = {
     available: { text: colors.statusAvailable, bg: colors.statusAvailableBg },
+    for_sale: { text: colors.statusAvailable, bg: colors.statusAvailableBg },
     on_hire: { text: colors.statusOnHire, bg: colors.statusOnHireBg },
     laid_up: { text: colors.statusLaidUp, bg: colors.statusLaidUpBg },
     decommissioned: { text: colors.statusDecommissioned, bg: colors.statusDecommissionedBg },

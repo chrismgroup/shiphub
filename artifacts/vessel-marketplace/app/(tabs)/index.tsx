@@ -22,12 +22,13 @@ import type { Vessel } from '@/lib/types';
 import { VESSEL_TYPES } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 
-const STATUSES = ['All', 'available', 'on_hire', 'laid_up', 'decommissioned'];
+const STATUSES = ['All', 'available', 'for_sale', 'on_hire', 'laid_up', 'decommissioned'];
 const VESSEL_TYPE_FILTERS = ['All', ...VESSEL_TYPES];
 
 const STATUS_LABELS: Record<string, string> = {
   All: 'All',
   available: 'Available',
+  for_sale: 'For Sale',
   on_hire: 'On Hire',
   laid_up: 'Laid Up',
   decommissioned: 'Decommissioned',
