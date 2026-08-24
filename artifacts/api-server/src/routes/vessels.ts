@@ -336,6 +336,40 @@ router.patch("/vessels/:id/status", async (req: VesselRequest, res): Promise<voi
   res.json(serializeVessel({ ...(await findVessel(id))!, firstPhotoPath: null }));
 });
 
+router.delete("/vessels/:id", async (req: VesselRequest, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const existing = Number.isInteger(id) && id > 0 ? await findVessel(id) : undefined;
+  if (!existing) {
+    res.status(404).json({ error: "Vessel not found" });
+    return;
+  }
+  if (
+    !isAdminOrOwner(req) ||
+    (req.vesselAuth!.role !== "admin" && existing.ownerId !== req.vesselAuth!.userId)
+  ) {
+    res.status(403).json({ error: "You cannot delete this vessel" });
+    return;
+  }
+
+  const active = await hasActiveCharter(id);
+  if (active) {
+    res.status(409).json({
+      error: "This vessel has an active charter. Terminate the charter before deleting the vessel.",
+    });
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    // Preserve referential integrity by removing only this vessel's closed
+    // charter history before deleting the vessel itself. Photos and contacts
+    // have database-level cascade rules.
+    await tx.delete(charterPartiesTable).where(eq(charterPartiesTable.vesselId, id));
+    await tx.delete(vesselsTable).where(eq(vesselsTable.id, id));
+  });
+
+  res.status(204).send();
+});
+
 router.get("/vessels/:id/photos", async (req: VesselRequest, res): Promise<void> => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {

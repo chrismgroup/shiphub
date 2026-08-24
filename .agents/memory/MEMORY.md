@@ -1,2 +1,3 @@
 - [Vessel availability integrity](vessel-availability-integrity.md) — manual availability changes must respect active charter ownership and lifecycle state.
 - [API integration test runner](api-integration-test-runner.md) — bundle HTTP integration tests as CommonJS to bridge workspace imports and Express dependencies.
+- [Vessel deletion policy](vessel-deletion-policy.md) — owner-requested listing deletion blocks active charters and removes only that vessel’s closed dependencies.
