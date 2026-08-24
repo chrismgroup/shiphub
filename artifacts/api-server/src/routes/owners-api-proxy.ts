@@ -9,6 +9,13 @@ const OWNER_API_PATHS = [
   "/vessel-photos",
 ] as const;
 
+function isLocalFixtureMode(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    process.env.SHIPHUB_LOCAL_FIXTURE_MODE === "true"
+  );
+}
+
 function ownersApiBaseUrl(): string | null {
   const value = process.env.SHIPHUB_OWNERS_API_BASE_URL?.trim();
   return value ? value.replace(/\/+$/, "") : null;
@@ -34,6 +41,14 @@ function forwardResponseHeaders(upstream: globalThis.Response, res: Response): v
 }
 
 router.use(async (req: Request, res: Response, next): Promise<void> => {
+  // Browser tests can explicitly use the project database for disposable,
+  // fully-cleaned fixture data. Production must always retain the Owners API
+  // boundary, regardless of this environment variable.
+  if (isLocalFixtureMode()) {
+    next();
+    return;
+  }
+
   if (!isOwnersApiPath(req.path)) {
     next();
     return;
