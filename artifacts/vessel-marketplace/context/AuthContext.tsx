@@ -166,7 +166,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAccount = useCallback(async () => {
     await api.auth.deleteAccount();
+    if (Platform.OS !== 'web') {
+      await Promise.all([
+        SecureStore.deleteItemAsync(BIOMETRIC_TOKEN_KEY),
+        SecureStore.deleteItemAsync(BIOMETRIC_USER_KEY),
+      ]);
+    }
     await logout();
+    setHasBiometricLogin(false);
   }, [logout]);
 
   useEffect(() => {
@@ -177,7 +184,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [logout]);
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, deleteAccount }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        isLoading,
+        login,
+        register,
+        logout,
+        deleteAccount,
+        biometricLogin,
+        hasBiometricLogin,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

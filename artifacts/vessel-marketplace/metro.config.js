@@ -7,7 +7,7 @@ const config = getDefaultConfig(__dirname);
 // those paths through the workspace node_modules tree and crashes when the
 // watcher reaches one after it has disappeared.
 config.resolver.blockList = [
-  /node_modules[\\/]\.pnpm[\\/].*_tmp_[\\/].*/,
+  /node_modules[\\/]\.pnpm[\\/].*_tmp[^\\/]*[\\/].*/,
 ];
 
 module.exports = config;
