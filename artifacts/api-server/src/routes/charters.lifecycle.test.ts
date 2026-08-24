@@ -3,6 +3,8 @@ import { createHmac } from "node:crypto";
 import type { Server } from "node:http";
 import test from "node:test";
 
+process.env.NODE_ENV = "test";
+process.env.SHIPHUB_LOCAL_FIXTURE_MODE = "true";
 process.env.SESSION_SECRET ??= "charter-lifecycle-test-secret";
 
 import { and, eq, inArray } from "drizzle-orm";
