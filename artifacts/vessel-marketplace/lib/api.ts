@@ -1,5 +1,6 @@
 import type {
   AuthResponse,
+  CharterOffer,
   CharterFormData,
   CharterParty,
   User,
@@ -159,6 +160,8 @@ export const api = {
     list: () => request<CharterParty[]>('/charter-parties'),
 
     get: (id: number) => request<CharterParty>(`/charter-parties/${id}`),
+
+    offers: (id: number) => request<CharterOffer[]>(`/charter-parties/${id}/offers`),
 
     update: (id: number, data: CharterFormData) =>
       request<CharterParty>(`/charter-parties/${id}`, {

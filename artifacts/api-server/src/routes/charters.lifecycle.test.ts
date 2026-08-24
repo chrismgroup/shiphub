@@ -10,6 +10,7 @@ process.env.SESSION_SECRET ??= "charter-lifecycle-test-secret";
 import { and, eq, inArray } from "drizzle-orm";
 import app from "../app.ts";
 import {
+  charterOffersTable,
   charterPartiesTable,
   db,
   pool,
@@ -206,6 +207,72 @@ test("owner can send a counter-offer and notify the charterer", async () => {
     ));
     assert.equal(notifications.length, 1);
     assert.match(notifications[0].message, /revised terms/);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("offer history records the owner response and charterer counter-offer in order", async () => {
+  const fixture = await createFixture();
+  try {
+    await db.update(charterPartiesTable)
+      .set({
+        status: "enquiry",
+        rate: "5000",
+        rateCurrency: "USD",
+        rateBasis: "Per Day",
+        terms: "Initial terms",
+        ownerConfirmedAt: null,
+        chartererConfirmedAt: null,
+      })
+      .where(eq(charterPartiesTable.id, fixture.charter.id));
+
+    const offersPath = `/api/charter-parties/${fixture.charter.id}/offers`;
+    const initialResponse = await fetch(`${baseUrl}${offersPath}`, {
+      headers: { authorization: `Bearer ${fixture.ownerToken}` },
+    });
+    const initialOffers = await initialResponse.json() as Array<Record<string, unknown>>;
+    assert.equal(initialResponse.status, 200);
+    assert.equal(initialOffers.length, 1);
+    assert.equal(initialOffers[0].actorRole, "charterer");
+
+    const ownerOffer = await fetch(`${baseUrl}/api/charter-parties/${fixture.charter.id}`, {
+      method: "PUT",
+      headers: {
+        authorization: `Bearer ${fixture.ownerToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ rate: "7500", terms: "Owner terms" }),
+    });
+    assert.equal(ownerOffer.status, 200);
+
+    const chartererOffer = await fetch(`${baseUrl}/api/charter-parties/${fixture.charter.id}`, {
+      method: "PUT",
+      headers: {
+        authorization: `Bearer ${fixture.chartererToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ rate: "7000", terms: "Charterer counter terms" }),
+    });
+    assert.equal(chartererOffer.status, 200);
+
+    const historyResponse = await fetch(`${baseUrl}${offersPath}`, {
+      headers: { authorization: `Bearer ${fixture.chartererToken}` },
+    });
+    const history = await historyResponse.json() as Array<Record<string, unknown>>;
+    assert.equal(history.length, 3);
+    assert.deepEqual(history.map(({ actorRole }) => actorRole), ["charterer", "owner", "charterer"]);
+    assert.equal(history[0].rate, "7000");
+    assert.equal(history[1].rate, "7500");
+    assert.equal(history[2].rate, "5000");
+    assert.equal(history[0].supersedesOfferId, history[1].id);
+    assert.equal(history[1].supersedesOfferId, history[2].id);
+    assert.equal(history[2].supersedesOfferId, null);
+    assert.ok(history.every(({ id, createdAt }) => Number(id) > 0 && typeof createdAt === "string"));
+
+    const persistedOffers = await db.select().from(charterOffersTable)
+      .where(eq(charterOffersTable.charterId, fixture.charter.id));
+    assert.equal(persistedOffers.length, 3);
   } finally {
     await fixture.cleanup();
   }

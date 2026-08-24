@@ -90,6 +90,24 @@ export interface CharterParty {
   ownerName?: string | null;
 }
 
+export interface CharterOffer {
+  id: number;
+  charterId: number;
+  actorId: number;
+  actorRole: 'owner' | 'charterer';
+  actorName?: string | null;
+  supersedesOfferId?: number | null;
+  rate?: string | null;
+  rateCurrency: string;
+  rateBasis?: string | null;
+  laycanEarliest?: string | null;
+  laycanLatest?: string | null;
+  durationDays?: number | null;
+  cargoPurpose?: string | null;
+  terms?: string | null;
+  createdAt: string;
+}
+
 export interface VesselNotification {
   id: number;
   userId: number;

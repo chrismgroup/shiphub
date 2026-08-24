@@ -119,6 +119,37 @@ export const charterPartiesTable = pgTable(
   ],
 );
 
+export const charterOffersTable = pgTable(
+  "charter_offers",
+  {
+    id: serial("id").primaryKey(),
+    charterId: integer("charter_id")
+      .notNull()
+      .references(() => charterPartiesTable.id, { onDelete: "cascade" }),
+    actorId: integer("actor_id")
+      .notNull()
+      .references(() => vesselUsersTable.id),
+    actorRole: text("actor_role").notNull(),
+    supersedesOfferId: integer("supersedes_offer_id"),
+    rate: numeric("rate"),
+    rateCurrency: text("rate_currency").notNull().default("USD"),
+    rateBasis: text("rate_basis"),
+    laycanEarliest: timestamp("laycan_earliest", { withTimezone: true }),
+    laycanLatest: timestamp("laycan_latest", { withTimezone: true }),
+    durationDays: integer("duration_days"),
+    cargoPurpose: text("cargo_purpose"),
+    terms: text("terms"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("charter_offers_charter_id_idx").on(table.charterId),
+    index("charter_offers_actor_id_idx").on(table.actorId),
+    index("charter_offers_created_at_idx").on(table.charterId, table.createdAt),
+  ],
+);
+
 export const vesselNotificationsTable = pgTable(
   "vessel_notifications",
   {

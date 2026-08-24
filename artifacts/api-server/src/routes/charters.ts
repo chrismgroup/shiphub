@@ -3,6 +3,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { Router, type IRouter } from "express";
 import {
   charterPartiesTable,
+  charterOffersTable,
   db,
   vesselNotificationsTable,
   vesselUsersTable,
@@ -91,6 +92,79 @@ async function findCharter(id: number) {
     .from(vesselUsersTable)
     .where(eq(vesselUsersTable.id, charter.ownerId));
   return { ...charter, ownerName: owner?.name ?? null };
+}
+
+function serializeOffer(offer: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(offer).map(([key, value]) => [
+      key,
+      value instanceof Date ? value.toISOString() : value,
+    ]),
+  );
+}
+
+async function getOfferHistory(charterId: number) {
+  const rows = await db
+    .select({
+      id: charterOffersTable.id,
+      charterId: charterOffersTable.charterId,
+      actorId: charterOffersTable.actorId,
+      actorRole: charterOffersTable.actorRole,
+      actorName: vesselUsersTable.name,
+      supersedesOfferId: charterOffersTable.supersedesOfferId,
+      rate: charterOffersTable.rate,
+      rateCurrency: charterOffersTable.rateCurrency,
+      rateBasis: charterOffersTable.rateBasis,
+      laycanEarliest: charterOffersTable.laycanEarliest,
+      laycanLatest: charterOffersTable.laycanLatest,
+      durationDays: charterOffersTable.durationDays,
+      cargoPurpose: charterOffersTable.cargoPurpose,
+      terms: charterOffersTable.terms,
+      createdAt: charterOffersTable.createdAt,
+    })
+    .from(charterOffersTable)
+    .innerJoin(vesselUsersTable, eq(charterOffersTable.actorId, vesselUsersTable.id))
+    .where(eq(charterOffersTable.charterId, charterId))
+    .orderBy(desc(charterOffersTable.createdAt), desc(charterOffersTable.id));
+  return rows.map((row) => serializeOffer(row));
+}
+
+async function recordOffer(
+  charter: Record<string, any>,
+  actorId: number,
+  actorRole: "owner" | "charterer",
+  supersedesOfferId: number | null,
+) {
+  const [offer] = await db
+    .insert(charterOffersTable)
+    .values({
+      charterId: charter.id,
+      actorId,
+      actorRole,
+      supersedesOfferId,
+      rate: charter.rate,
+      rateCurrency: charter.rateCurrency ?? "USD",
+      rateBasis: charter.rateBasis,
+      laycanEarliest: charter.laycanEarliest,
+      laycanLatest: charter.laycanLatest,
+      durationDays: charter.durationDays,
+      cargoPurpose: charter.cargoPurpose,
+      terms: charter.terms,
+    })
+    .returning();
+  return offer;
+}
+
+async function ensureBaselineOffer(charter: Record<string, any>) {
+  const existing = await db
+    .select({ id: charterOffersTable.id })
+    .from(charterOffersTable)
+    .where(eq(charterOffersTable.charterId, charter.id))
+    .limit(1);
+  if (existing.length === 0) {
+    await recordOffer(charter, charter.chartererId, "charterer", null);
+  }
+  return getOfferHistory(charter.id);
 }
 
 async function canViewCharter(req: VesselRequest, charter: { chartererId: number; ownerId: number }) {
@@ -216,6 +290,8 @@ router.post("/vessels/:vesselId/charter", async (req: VesselRequest, res): Promi
     })
     .returning({ id: charterPartiesTable.id });
 
+  const createdCharter = await findCharter(charter.id);
+  await recordOffer(createdCharter!, userId, "charterer", null);
   await notify(
     vessel.ownerId,
     "enquiry_received",
@@ -224,8 +300,7 @@ router.post("/vessels/:vesselId/charter", async (req: VesselRequest, res): Promi
     charter.id,
   );
   broadcastCharterUpdate(charter.id);
-  const created = await findCharter(charter.id);
-  res.status(201).json(serializeCharter(created!));
+  res.status(201).json(serializeCharter(createdCharter!));
 });
 
 router.get("/charter-parties", async (req: VesselRequest, res): Promise<void> => {
@@ -275,6 +350,16 @@ router.get("/charter-parties/:id", async (req: VesselRequest, res): Promise<void
   res.json(serializeCharter(charter));
 });
 
+router.get("/charter-parties/:id/offers", async (req: VesselRequest, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const charter = Number.isInteger(id) && id > 0 ? await findCharter(id) : undefined;
+  if (!charter || !(await canViewCharter(req, charter))) {
+    res.status(404).json({ error: "Charter not found" });
+    return;
+  }
+  res.json(await ensureBaselineOffer(charter));
+});
+
 router.put("/charter-parties/:id", async (req: VesselRequest, res): Promise<void> => {
   const id = Number(req.params.id);
   const charter = Number.isInteger(id) && id > 0 ? await findCharter(id) : undefined;
@@ -293,26 +378,47 @@ router.put("/charter-parties/:id", async (req: VesselRequest, res): Promise<void
     return;
   }
   const isOwner = req.vesselAuth!.userId === charter.ownerId;
+  const offerHistory = await ensureBaselineOffer(charter);
+  const latestOffer = offerHistory[0] as Record<string, any> | undefined;
+  const actorRole = isOwner ? "owner" : "charterer";
+  if (latestOffer?.actorRole === actorRole) {
+    res.status(409).json({
+      error: `Wait for the ${isOwner ? "charterer" : "ship owner"} to respond before sending another offer`,
+    });
+    return;
+  }
+  const nextCharter = {
+    ...charter,
+    rate: body.rate === undefined ? charter.rate : terms.rate,
+    rateCurrency: terms.rateCurrency ?? charter.rateCurrency,
+    rateBasis: body.rateBasis === undefined ? charter.rateBasis : terms.rateBasis,
+    laycanEarliest:
+      body.laycanEarliest === undefined ? charter.laycanEarliest : terms.laycanEarliest,
+    laycanLatest:
+      body.laycanLatest === undefined ? charter.laycanLatest : terms.laycanLatest,
+    durationDays: body.durationDays === undefined ? charter.durationDays : terms.durationDays,
+    cargoPurpose:
+      body.cargoPurpose === undefined ? charter.cargoPurpose : stringValue(body.cargoPurpose),
+    terms: body.terms === undefined ? charter.terms : stringValue(body.terms),
+  };
   await db
     .update(charterPartiesTable)
     .set({
-      rate: body.rate === undefined ? charter.rate : terms.rate,
-      rateCurrency: terms.rateCurrency ?? charter.rateCurrency,
-      rateBasis: body.rateBasis === undefined ? charter.rateBasis : terms.rateBasis,
-      laycanEarliest:
-        body.laycanEarliest === undefined ? charter.laycanEarliest : terms.laycanEarliest,
-      laycanLatest:
-        body.laycanLatest === undefined ? charter.laycanLatest : terms.laycanLatest,
-      durationDays: body.durationDays === undefined ? charter.durationDays : terms.durationDays,
-      cargoPurpose:
-        body.cargoPurpose === undefined ? charter.cargoPurpose : stringValue(body.cargoPurpose),
-      terms: body.terms === undefined ? charter.terms : stringValue(body.terms),
+      rate: nextCharter.rate,
+      rateCurrency: nextCharter.rateCurrency,
+      rateBasis: nextCharter.rateBasis,
+      laycanEarliest: nextCharter.laycanEarliest,
+      laycanLatest: nextCharter.laycanLatest,
+      durationDays: nextCharter.durationDays,
+      cargoPurpose: nextCharter.cargoPurpose,
+      terms: nextCharter.terms,
       status: "negotiating",
       ownerConfirmedAt: null,
       chartererConfirmedAt: null,
       updatedAt: new Date(),
     })
     .where(eq(charterPartiesTable.id, id));
+  await recordOffer(nextCharter, req.vesselAuth!.userId, actorRole, latestOffer?.id ?? null);
   broadcastCharterUpdate(id);
   await notify(
     isOwner ? charter.chartererId : charter.ownerId,

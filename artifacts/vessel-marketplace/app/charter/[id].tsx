@@ -20,12 +20,20 @@ import { useColors } from '@/hooks/useColors';
 import { DatePickerField } from '@/components/DatePickerField';
 import { useCharterSocket } from '@/hooks/useCharterSocket';
 import { api } from '@/lib/api';
-import type { CharterFormData, CharterParty } from '@/lib/types';
+import type { CharterFormData, CharterOffer, CharterParty } from '@/lib/types';
 
 function fmt(d?: string | null) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-GB', {
     day: 'numeric', month: 'short', year: 'numeric',
+  });
+}
+
+function fmtDateTime(d?: string | null) {
+  if (!d) return '—';
+  return new Date(d).toLocaleString('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
   });
 }
 
@@ -53,6 +61,11 @@ export default function CharterDetailScreen() {
     queryFn: () => api.charters.get(charterId),
     enabled: charterId > 0,
   });
+  const { data: offers, isLoading: offersLoading } = useQuery({
+    queryKey: ['charter-offers', charterId],
+    queryFn: () => api.charters.offers(charterId),
+    enabled: charterId > 0,
+  });
 
   // Live updates via WebSocket — invalidates this charter whenever the server
   // pushes an update for it, so no polling needed.
@@ -67,6 +80,7 @@ export default function CharterDetailScreen() {
   function invalidate() {
     qc.invalidateQueries({ queryKey: ['charter', charterId] });
     qc.invalidateQueries({ queryKey: ['charter-parties'] });
+    qc.invalidateQueries({ queryKey: ['charter-offers', charterId] });
   }
 
   const confirmMutation = useMutation({
@@ -151,7 +165,14 @@ export default function CharterDetailScreen() {
   const isOwner = user?.id === cp.ownerId || user?.role === 'admin';
   const isCharterer = user?.id === cp.chartererId;
   const isOpen = ['enquiry', 'negotiating'].includes(cp.status);
-  const canEdit = (isOwner || isCharterer) && isOpen;
+  const latestOffer = offers?.[0];
+  const canEdit =
+    isOpen &&
+    (isOwner || isCharterer) &&
+    (!offersLoading &&
+      (latestOffer
+        ? latestOffer.actorRole !== (isOwner ? 'owner' : 'charterer')
+        : isOwner));
   const canConfirm =
     isOpen &&
     ((isOwner && !cp.ownerConfirmedAt) ||
@@ -243,6 +264,8 @@ export default function CharterDetailScreen() {
                 </View>
               )}
             </View>
+
+            <OfferTimeline offers={offers ?? []} colors={colors} />
 
             {/* Hire info */}
             {(cp.hireStart || cp.hireEnd) && (
@@ -421,7 +444,7 @@ function EditForm({
 
   return (
     <View style={styles.editFormWrap}>
-      <Text style={[styles.editTitle, { color: colors.foreground }]}>Update Terms</Text>
+      <Text style={[styles.editTitle, { color: colors.foreground }]}>Send Offer / Counter-offer</Text>
 
       {([
         ['Rate', 'rate', 'numeric'],
@@ -486,9 +509,83 @@ function EditForm({
         {saving ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.saveBtnText}>Save Changes</Text>
+          <Text style={styles.saveBtnText}>Send Offer</Text>
         )}
       </Pressable>
+    </View>
+  );
+}
+
+function OfferTimeline({
+  offers,
+  colors,
+}: {
+  offers: CharterOffer[];
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={styles.offerHeading}>
+        <View>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Offer history</Text>
+          <Text style={[styles.offerSubheading, { color: colors.mutedForeground }]}>
+            {offers.length} {offers.length === 1 ? 'offer' : 'offers'} recorded
+          </Text>
+        </View>
+        <Feather name="clock" size={17} color={colors.accent} />
+      </View>
+      {offers.length === 0 ? (
+        <Text style={[styles.offerEmpty, { color: colors.mutedForeground }]}>
+          Offer history will appear here.
+        </Text>
+      ) : (
+        offers.map((offer, index) => (
+          <View
+            key={offer.id}
+            style={[
+              styles.offerCard,
+              {
+                backgroundColor: index === 0 ? colors.secondary : colors.background,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <View style={styles.offerCardHeader}>
+              <View style={styles.offerActor}>
+                <View style={[styles.offerDot, { backgroundColor: offer.actorRole === 'owner' ? colors.accent : colors.primary }]} />
+                <Text style={[styles.offerActorText, { color: colors.foreground }]}>
+                  {offer.actorRole === 'owner' ? 'Ship owner' : 'Charterer'}
+                </Text>
+                {index === 0 && (
+                  <Text style={[styles.latestTag, { color: colors.accent }]}>LATEST</Text>
+                )}
+              </View>
+              <Text style={[styles.offerId, { color: colors.mutedForeground }]}>Offer #{offer.id}</Text>
+            </View>
+            <Text style={[styles.offerDate, { color: colors.mutedForeground }]}>
+              {fmtDateTime(offer.createdAt)}
+            </Text>
+            {offer.rate && (
+              <InfoRow
+                label="Amount"
+                value={`${offer.rate} ${offer.rateCurrency}${offer.rateBasis ? ` / ${offer.rateBasis}` : ''}`}
+                colors={colors}
+              />
+            )}
+            {offer.laycanEarliest && (
+              <InfoRow label="Laycan" value={`${fmt(offer.laycanEarliest)} – ${fmt(offer.laycanLatest)}`} colors={colors} />
+            )}
+            {offer.durationDays && <InfoRow label="Duration" value={`${offer.durationDays} days`} colors={colors} />}
+            {offer.cargoPurpose && <InfoRow label="Cargo" value={offer.cargoPurpose} colors={colors} />}
+            {offer.terms && (
+              <View style={styles.offerTerms}>
+                <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>Terms and conditions</Text>
+                <Text style={[styles.termsText, { color: colors.foreground }]}>{offer.terms}</Text>
+              </View>
+            )}
+          </View>
+        ))
+      )}
     </View>
   );
 }
@@ -540,6 +637,18 @@ const styles = StyleSheet.create({
   ts: { fontFamily: 'Inter_400Regular', fontSize: 12 },
   editFormWrap: { gap: 12 },
   editTitle: { fontFamily: 'Inter_700Bold', fontSize: 18 },
+  offerHeading: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  offerSubheading: { fontFamily: 'Inter_400Regular', fontSize: 12, marginTop: -2 },
+  offerEmpty: { fontFamily: 'Inter_400Regular', fontSize: 13 },
+  offerCard: { borderRadius: 10, borderWidth: 1, padding: 11, gap: 7 },
+  offerCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  offerActor: { flexDirection: 'row', alignItems: 'center', gap: 7, flex: 1 },
+  offerDot: { width: 8, height: 8, borderRadius: 4 },
+  offerActorText: { fontFamily: 'Inter_600SemiBold', fontSize: 13 },
+  latestTag: { fontFamily: 'Inter_700Bold', fontSize: 10, letterSpacing: 0.6 },
+  offerId: { fontFamily: 'Inter_500Medium', fontSize: 11 },
+  offerDate: { fontFamily: 'Inter_400Regular', fontSize: 11 },
+  offerTerms: { gap: 4, borderTopWidth: 1, borderTopColor: '#dfe6ec', paddingTop: 7 },
   field: { gap: 6 },
   dateStack: { gap: 12 },
   fieldLabel: { fontFamily: 'Inter_500Medium', fontSize: 14 },
