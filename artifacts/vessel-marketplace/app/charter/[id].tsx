@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
+import { DatePickerField } from '@/components/DatePickerField';
 import { useCharterSocket } from '@/hooks/useCharterSocket';
 import { api } from '@/lib/api';
 import type { CharterFormData, CharterParty } from '@/lib/types';
@@ -385,7 +386,13 @@ function EditForm({
   saving: boolean;
 }) {
   function update(key: keyof CharterFormData, val: string) {
-    setForm((f) => ({ ...f, [key]: val }));
+    setForm((f) => {
+      const next = { ...f, [key]: val };
+      if (key === 'laycanEarliest' && next.laycanLatest && next.laycanLatest < val) {
+        next.laycanLatest = undefined;
+      }
+      return next;
+    });
   }
 
   return (
@@ -395,9 +402,7 @@ function EditForm({
       {([
         ['Rate', 'rate', 'numeric'],
         ['Rate Currency', 'rateCurrency', 'default'],
-        ['Rate Basis', 'rateBasis', 'default'],
-        ['Laycan Earliest (YYYY-MM-DD)', 'laycanEarliest', 'default'],
-        ['Laycan Latest (YYYY-MM-DD)', 'laycanLatest', 'default'],
+         ['Rate Basis', 'rateBasis', 'default'],
         ['Duration (days)', 'durationDays', 'numeric'],
         ['Cargo Purpose', 'cargoPurpose', 'default'],
       ] as [string, keyof CharterFormData, 'default' | 'numeric'][]).map(([label, key, kb]) => (
@@ -412,6 +417,22 @@ function EditForm({
           />
         </View>
       ))}
+
+      <View style={styles.dateStack}>
+        <DatePickerField
+          label="Earliest laycan"
+          value={form.laycanEarliest}
+          onChange={(value) => update('laycanEarliest', value)}
+          testID="edit-laycan-earliest"
+        />
+        <DatePickerField
+          label="Latest laycan"
+          value={form.laycanLatest}
+          minimumDate={form.laycanEarliest}
+          onChange={(value) => update('laycanLatest', value)}
+          testID="edit-laycan-latest"
+        />
+      </View>
 
       <View style={styles.field}>
         <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Additional Terms</Text>
@@ -496,6 +517,7 @@ const styles = StyleSheet.create({
   editFormWrap: { gap: 12 },
   editTitle: { fontFamily: 'Inter_700Bold', fontSize: 18 },
   field: { gap: 6 },
+  dateStack: { gap: 12 },
   fieldLabel: { fontFamily: 'Inter_500Medium', fontSize: 14 },
   input: {
     borderWidth: 1,

@@ -15,6 +15,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
+import { DatePickerField } from '@/components/DatePickerField';
 import { api } from '@/lib/api';
 import type { CharterFormData } from '@/lib/types';
 import { CHARTER_CURRENCIES, RATE_BASES } from '@/lib/types';
@@ -31,7 +32,13 @@ export default function NewCharterScreen() {
   });
 
   function update(key: keyof CharterFormData, val: string) {
-    setForm((f) => ({ ...f, [key]: val }));
+    setForm((f) => {
+      const next = { ...f, [key]: val };
+      if (key === 'laycanEarliest' && next.laycanLatest && next.laycanLatest < val) {
+        next.laycanLatest = undefined;
+      }
+      return next;
+    });
   }
 
   const mutation = useMutation({
@@ -146,27 +153,20 @@ export default function NewCharterScreen() {
 
         {/* Laycan */}
         <Section title="Laycan Period" colors={colors}>
-          <View style={styles.row2}>
-            <View style={{ flex: 1 }}>
-              <Field label="Earliest (YYYY-MM-DD)" colors={colors}>
-                <StyledInput
-                  value={form.laycanEarliest ?? ''}
-                  onChangeText={(v) => update('laycanEarliest', v)}
-                  placeholder="2025-08-01"
-                  colors={colors}
-                />
-              </Field>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Field label="Latest (YYYY-MM-DD)" colors={colors}>
-                <StyledInput
-                  value={form.laycanLatest ?? ''}
-                  onChangeText={(v) => update('laycanLatest', v)}
-                  placeholder="2025-08-15"
-                  colors={colors}
-                />
-              </Field>
-            </View>
+          <View style={styles.dateStack}>
+            <DatePickerField
+              label="Earliest laycan"
+              value={form.laycanEarliest}
+              onChange={(value) => update('laycanEarliest', value)}
+              testID="laycan-earliest"
+            />
+            <DatePickerField
+              label="Latest laycan"
+              value={form.laycanLatest}
+              minimumDate={form.laycanEarliest}
+              onChange={(value) => update('laycanLatest', value)}
+              testID="laycan-latest"
+            />
           </View>
 
           <Field label="Duration (days)" colors={colors}>
@@ -336,6 +336,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   row2: { flexDirection: 'row', gap: 10 },
+  dateStack: { gap: 12 },
   row3: { flexDirection: 'row', gap: 10 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {

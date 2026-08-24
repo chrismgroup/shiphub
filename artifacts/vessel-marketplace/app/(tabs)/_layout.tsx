@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, StyleSheet, useColorScheme, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useQuery } from '@tanstack/react-query';
@@ -49,9 +49,7 @@ function NativeTabLayout() {
 
 function ClassicTabLayout() {
   const colors = useColors();
-  const colorScheme = useColorScheme();
   const safeAreaInsets = useSafeAreaInsets();
-  const isDark = colorScheme === 'dark';
   const isIOS = Platform.OS === 'ios';
   const isWeb = Platform.OS === 'web';
   const { user } = useAuth();
@@ -85,7 +83,7 @@ function ClassicTabLayout() {
           isIOS ? (
             <BlurView
               intensity={100}
-              tint={isDark ? 'dark' : 'light'}
+              tint="light"
               style={StyleSheet.absoluteFill}
             />
           ) : isWeb ? (

@@ -4,7 +4,6 @@ import {
   Alert,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +14,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
+import { NavigationMap } from '@/components/NavigationMap';
+import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -26,12 +27,16 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
 
   async function handleLogin() {
     if (!email.trim() || !password) {
-      Alert.alert('Missing fields', 'Please enter your email and password.');
+      const message = 'Please enter your email and password.';
+      setValidationMessage(message);
+      Alert.alert('Missing fields', message);
       return;
     }
+    setValidationMessage(null);
     setLoading(true);
     try {
       await login(email.trim().toLowerCase(), password);
@@ -46,146 +51,156 @@ export default function LoginScreen() {
   const topInset = Platform.OS === 'web' ? 67 : insets.top;
 
   return (
-    <ScrollView
+    <KeyboardAwareScrollViewCompat
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={[
         styles.content,
-        { paddingTop: topInset + 48, paddingBottom: insets.bottom + 40 },
+        { paddingTop: topInset + 18, paddingBottom: insets.bottom + 34 },
       ]}
+      bottomOffset={60}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
     >
-      {/* Logo / header */}
       <View style={styles.header}>
-        {/* Icon with glow ring */}
-        <View style={styles.iconOuter}>
-          <View style={[styles.iconGlow, { backgroundColor: colors.primary }]} />
-          <View style={[styles.iconWrap, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-            <Feather name="anchor" size={32} color={colors.primary} />
+        <View style={styles.brandRow}>
+          <View style={[styles.iconWrap, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+            <Feather name="anchor" size={21} color={colors.primary} />
+          </View>
+          <View>
+            <Text style={[styles.brand, { color: colors.primary }]}>SHIPHUB</Text>
+            <Text style={[styles.deskLabel, { color: colors.mutedForeground }]}>CHARTERER DESK</Text>
           </View>
         </View>
-
-        <Text style={[styles.brand, { color: colors.primary }]}>ShipHub</Text>
-        <Text style={[styles.appName, { color: colors.foreground }]}>Charterer App</Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Sign in to your account
-        </Text>
+        <Text style={[styles.welcomeTitle, { color: colors.foreground }]}>Welcome aboard.</Text>
+        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Sign in and pick up your next charter route.</Text>
       </View>
 
-      {reason === 'owner' && (
+      <NavigationMap compact title="Your charter route" />
+
+      {reason === 'owner' ? (
         <View style={[styles.notice, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
           <Feather name="info" size={16} color={colors.accent} />
           <Text style={[styles.noticeText, { color: colors.secondaryForeground }]}>
             Owner and admin accounts use the ShipHub Owner app.
           </Text>
         </View>
-      )}
+      ) : null}
 
-      {/* Form */}
-      <View style={styles.form}>
-        <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-          <Feather name="mail" size={17} color={colors.mutedForeground} style={styles.inputIcon} />
-          <TextInput
-            style={[styles.input, { color: colors.foreground }]}
-            placeholder="Email address"
-            placeholderTextColor={colors.mutedForeground}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-          />
+      <View style={[styles.formPanel, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.formHeading}>
+          <Text style={[styles.formTitle, { color: colors.foreground }]}>Sign in</Text>
+          <Text style={[styles.formHint, { color: colors.mutedForeground }]}>Your market desk is ready.</Text>
         </View>
-
-        <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-          <Feather name="lock" size={17} color={colors.mutedForeground} style={styles.inputIcon} />
-          <TextInput
-            style={[styles.input, { color: colors.foreground }]}
-            placeholder="Password"
-            placeholderTextColor={colors.mutedForeground}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            autoComplete="password"
-          />
-          <Pressable onPress={() => setShowPassword((p) => !p)} style={styles.eyeBtn}>
-            <Feather
-              name={showPassword ? 'eye-off' : 'eye'}
-              size={17}
-              color={colors.mutedForeground}
+        {validationMessage ? (
+          <View
+            accessibilityLiveRegion="polite"
+            testID="login-validation-message"
+            style={[styles.validationNotice, { backgroundColor: colors.statusDeclinedBg, borderColor: colors.statusDeclined }]}
+          >
+            <Feather name="alert-circle" size={15} color={colors.statusDeclined} />
+            <Text style={[styles.validationText, { color: colors.statusDeclined }]}>{validationMessage}</Text>
+          </View>
+        ) : null}
+        <View style={styles.form}>
+          <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+            <Feather name="mail" size={17} color={colors.mutedForeground} style={styles.inputIcon} />
+            <TextInput
+              style={[styles.input, { color: colors.foreground }]}
+              placeholder="Email address"
+              placeholderTextColor={colors.mutedForeground}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              accessibilityLabel="Email address"
+              testID="login-email"
             />
+          </View>
+
+          <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+            <Feather name="lock" size={17} color={colors.mutedForeground} style={styles.inputIcon} />
+            <TextInput
+              style={[styles.input, { color: colors.foreground }]}
+              placeholder="Password"
+              placeholderTextColor={colors.mutedForeground}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoComplete="password"
+              accessibilityLabel="Password"
+              testID="login-password"
+            />
+            <Pressable
+              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+              onPress={() => setShowPassword((value) => !value)}
+              style={styles.eyeBtn}
+            >
+              <Feather name={showPassword ? 'eye-off' : 'eye'} size={17} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+
+          <Pressable
+            testID="login-submit"
+            onPress={handleLogin}
+            disabled={loading}
+            style={({ pressed }) => [
+              styles.loginBtn,
+              { backgroundColor: colors.primary, opacity: pressed || loading ? 0.75 : 1 },
+            ]}
+          >
+            {loading ? (
+              <ActivityIndicator color={colors.primaryForeground} />
+            ) : (
+              <View style={styles.loginBtnInner}>
+                <Text style={[styles.loginBtnText, { color: colors.primaryForeground }]}>Sign in to ShipHub</Text>
+                <Feather name="arrow-right" size={16} color={colors.primaryForeground} />
+              </View>
+            )}
           </Pressable>
         </View>
-
-        <Pressable
-          onPress={handleLogin}
-          disabled={loading}
-          style={({ pressed }) => [
-            styles.loginBtn,
-            { backgroundColor: colors.primary, opacity: pressed || loading ? 0.75 : 1 },
-          ]}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <View style={styles.loginBtnInner}>
-              <Text style={styles.loginBtnText}>Sign In</Text>
-              <Feather name="arrow-right" size={16} color="#fff" />
-            </View>
-          )}
-        </Pressable>
       </View>
 
-      {/* Register link */}
-      <Pressable onPress={() => router.push('/auth/register')} style={styles.registerLink}>
+      <Pressable testID="register-link" onPress={() => router.push('/auth/register')} style={styles.registerLink}>
         <Text style={[styles.registerText, { color: colors.mutedForeground }]}>
           Don't have an account?{' '}
-          <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>
+          <Text style={[styles.registerHighlight, { color: colors.primary }]}>
             Register
           </Text>
         </Text>
       </Pressable>
-    </ScrollView>
+    </KeyboardAwareScrollViewCompat>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingHorizontal: 24 },
-  header: { alignItems: 'center', marginBottom: 36 },
-  iconOuter: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  iconGlow: {
-    position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    opacity: 0.12,
-  },
+  content: { paddingHorizontal: 20 },
+  header: { marginBottom: 17 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 18 },
   iconWrap: {
-    width: 68,
-    height: 68,
-    borderRadius: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 13,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   brand: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 13,
-    letterSpacing: 2,
+    fontSize: 12,
+    letterSpacing: 2.4,
     textTransform: 'uppercase',
-    marginBottom: 6,
+    marginBottom: 2,
   },
-  appName: {
+  deskLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 9, letterSpacing: 1.25 },
+  welcomeTitle: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 24,
-    letterSpacing: -0.6,
-    marginBottom: 6,
+    fontSize: 29,
+    letterSpacing: -0.9,
+    marginBottom: 5,
   },
-  subtitle: { fontFamily: 'Inter_400Regular', fontSize: 14 },
+  subtitle: { fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 20 },
   notice: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -193,15 +208,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,
-    marginBottom: 14,
+    marginTop: 14,
+    marginBottom: 12,
   },
   noticeText: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 13, lineHeight: 18 },
-  form: { gap: 12 },
+  formPanel: { borderWidth: 1, borderRadius: 20, padding: 15, marginTop: 16 },
+  formHeading: { marginBottom: 13 },
+  formTitle: { fontFamily: 'Inter_700Bold', fontSize: 18, letterSpacing: -0.3 },
+  formHint: { fontFamily: 'Inter_400Regular', fontSize: 12, marginTop: 3 },
+  validationNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    marginBottom: 12,
+  },
+  validationText: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 12, lineHeight: 16 },
+  form: { gap: 11 },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: 14,
     height: 52,
   },
@@ -215,7 +246,7 @@ const styles = StyleSheet.create({
   eyeBtn: { padding: 4 },
   loginBtn: {
     height: 52,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
@@ -228,8 +259,8 @@ const styles = StyleSheet.create({
   loginBtnText: {
     fontFamily: 'Inter_700Bold',
     fontSize: 16,
-    color: '#fff',
   },
-  registerLink: { marginTop: 28, alignItems: 'center' },
+  registerLink: { marginTop: 22, alignItems: 'center' },
   registerText: { fontFamily: 'Inter_400Regular', fontSize: 14 },
+  registerHighlight: { fontFamily: 'Inter_600SemiBold' },
 });

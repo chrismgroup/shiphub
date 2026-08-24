@@ -5,6 +5,7 @@ import {
   Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +16,7 @@ import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VesselCard } from '@/components/VesselCard';
+import { NavigationMap } from '@/components/NavigationMap';
 import { useColors } from '@/hooks/useColors';
 import { api } from '@/lib/api';
 import type { Vessel } from '@/lib/types';
@@ -41,6 +43,7 @@ export default function BrowseScreen() {
   const [vesselType, setVesselType] = useState('All');
   const [status, setStatus] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedVesselId, setSelectedVesselId] = useState<number | null>(null);
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ['vessels', search, vesselType, status],
@@ -56,6 +59,8 @@ export default function BrowseScreen() {
   const topInset = Platform.OS === 'web' ? 67 : insets.top;
   const total = data?.length ?? 0;
   const available = data?.filter((v: Vessel) => v.status === 'available').length ?? 0;
+  const selectedVessel =
+    data?.find((vessel) => vessel.id === selectedVesselId) ?? data?.[0] ?? null;
 
   function renderEmpty() {
     if (isLoading) return null;
@@ -89,178 +94,205 @@ export default function BrowseScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: topInset + 8, backgroundColor: colors.background }]}>
-        {/* Title row */}
-        <View style={styles.titleRow}>
-          <View>
-            <Text style={[styles.subtitle, { color: colors.primary }]}>ShipHub</Text>
-            <Text style={[styles.title, { color: colors.foreground }]}>Vessel Market</Text>
-          </View>
-          <Pressable
-            onPress={() => setShowFilters((f) => !f)}
-            style={[
-              styles.filterToggle,
-              {
-                backgroundColor: showFilters ? colors.primary : colors.muted,
-                borderColor: showFilters ? colors.primary : colors.border,
-              },
-            ]}
-          >
-            <Feather
-              name="sliders"
-              size={16}
-              color={showFilters ? '#fff' : colors.mutedForeground}
-            />
-          </Pressable>
-        </View>
-
-        {/* Stats strip */}
-        {total > 0 && (
-          <View style={[styles.statsStrip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-            {[
-              [String(total), 'Listings'],
-              [String(available), 'Available'],
-            ].map(([val, lbl]) => (
-              <View key={lbl} style={styles.statItem}>
-                <Text style={[styles.statValue, { color: colors.primary }]}>{val}</Text>
-                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{lbl}</Text>
-              </View>
-            ))}
-            <View style={[styles.statItem, { flex: 2, alignItems: 'flex-end' as const }]}>
-              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Updated just now</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Search bar */}
-        <View
-          style={[
-            styles.searchBar,
-            { backgroundColor: colors.muted, borderColor: colors.border },
-          ]}
-        >
-          <Feather name="search" size={15} color={colors.mutedForeground} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.foreground }]}
-            placeholder="Search vessels…"
-            placeholderTextColor={colors.mutedForeground}
-            value={search}
-            onChangeText={setSearch}
-            returnKeyType="search"
-          />
-          {search ? (
-            <Pressable onPress={() => setSearch('')}>
-              <Feather name="x" size={15} color={colors.mutedForeground} />
-            </Pressable>
-          ) : null}
-        </View>
-
-        {/* Filters */}
-        {showFilters && (
-          <View style={styles.filtersSection}>
-            <Text style={[styles.filterLabel, { color: colors.mutedForeground }]}>Type</Text>
-            <FlatList
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              data={VESSEL_TYPE_FILTERS}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <Pressable
-                  onPress={() => setVesselType(item)}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: vesselType === item ? colors.primary : colors.muted,
-                      borderColor: vesselType === item ? colors.primary : colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      { color: vesselType === item ? '#fff' : colors.mutedForeground },
-                    ]}
-                  >
-                    {item}
-                  </Text>
-                </Pressable>
-              )}
-              contentContainerStyle={{ gap: 6, paddingVertical: 4 }}
-            />
-            <Text style={[styles.filterLabel, { color: colors.mutedForeground, marginTop: 8 }]}>
-              Status
-            </Text>
-            <FlatList
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              data={STATUSES}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <Pressable
-                  onPress={() => setStatus(item)}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: status === item ? colors.accent : colors.muted,
-                      borderColor: status === item ? colors.accent : colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      { color: status === item ? '#fff' : colors.mutedForeground },
-                    ]}
-                  >
-                    {STATUS_LABELS[item] ?? item}
-                  </Text>
-                </Pressable>
-              )}
-              contentContainerStyle={{ gap: 6, paddingVertical: 4 }}
-            />
-          </View>
-        )}
-      </View>
-
-      {/* Loading overlay */}
-      {isLoading && (
-        <View style={styles.loadingCenter}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      )}
-
-      {/* List */}
       <FlatList<Vessel>
         data={data ?? []}
         keyExtractor={(v) => String(v.id)}
+        testID="vessel-market-list"
         renderItem={({ item }) => (
           <VesselCard vessel={item} onPress={() => router.push(`/vessel/${item.id}`)} />
         )}
+        ListHeaderComponent={
+          <View style={[styles.header, { paddingTop: topInset + 10 }]}>
+            <View style={styles.topRow}>
+              <View style={[styles.brandMark, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                <Feather name="anchor" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.brandCopy}>
+                <Text style={[styles.subtitle, { color: colors.primary }]}>ShipHub Charterer</Text>
+                <Text style={[styles.title, { color: colors.foreground }]}>Find the next move.</Text>
+              </View>
+              <Pressable
+                accessibilityLabel="Toggle vessel filters"
+                accessibilityState={{ expanded: showFilters }}
+                testID="toggle-vessel-filters"
+                onPress={() => setShowFilters((value) => !value)}
+                style={({ pressed }) => [
+                  styles.filterToggle,
+                  {
+                    backgroundColor: showFilters ? colors.primary : colors.card,
+                    borderColor: showFilters ? colors.primary : colors.border,
+                    opacity: pressed ? 0.76 : 1,
+                  },
+                ]}
+              >
+                <Feather name="sliders" size={17} color={showFilters ? colors.primaryForeground : colors.primary} />
+              </Pressable>
+            </View>
+
+            <Text style={[styles.routeCaption, { color: colors.mutedForeground }]}>
+              Live availability across the routes that matter.
+            </Text>
+
+            <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="search" size={16} color={colors.mutedForeground} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.foreground }]}
+                placeholder="Search vessel, owner or route"
+                placeholderTextColor={colors.mutedForeground}
+                value={search}
+                onChangeText={setSearch}
+                returnKeyType="search"
+                accessibilityLabel="Search vessels"
+                testID="vessel-search"
+              />
+              {search ? (
+                <Pressable accessibilityLabel="Clear vessel search" onPress={() => setSearch('')}>
+                  <Feather name="x" size={16} color={colors.mutedForeground} />
+                </Pressable>
+              ) : null}
+            </View>
+
+            {showFilters ? (
+              <View style={[styles.filtersSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.filterLabel, { color: colors.mutedForeground }]}>Vessel type</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+                  {VESSEL_TYPE_FILTERS.map((item) => {
+                    const selected = vesselType === item;
+                    return (
+                      <Pressable
+                        key={item}
+                        onPress={() => setVesselType(item)}
+                        style={[
+                          styles.chip,
+                          {
+                            backgroundColor: selected ? colors.primary : colors.muted,
+                            borderColor: selected ? colors.primary : colors.border,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.chipText, { color: selected ? colors.primaryForeground : colors.mutedForeground }]}>
+                          {item}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+                <Text style={[styles.filterLabel, { color: colors.mutedForeground, marginTop: 12 }]}>Availability</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+                  {STATUSES.map((item) => {
+                    const selected = status === item;
+                    return (
+                      <Pressable
+                        key={item}
+                        onPress={() => setStatus(item)}
+                        style={[
+                          styles.chip,
+                          {
+                            backgroundColor: selected ? colors.accent : colors.muted,
+                            borderColor: selected ? colors.accent : colors.border,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.chipText, { color: selected ? colors.accentForeground : colors.mutedForeground }]}>
+                          {STATUS_LABELS[item] ?? item}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            ) : null}
+
+            <NavigationMap
+              vessels={data ?? []}
+              selectedVesselId={selectedVessel?.id ?? null}
+              onSelectVessel={(vessel) => setSelectedVesselId(vessel.id)}
+              title="Live availability"
+            />
+
+            {selectedVessel ? (
+              <Pressable
+                accessibilityLabel={`Open details for ${selectedVessel.name}`}
+                onPress={() => router.push(`/vessel/${selectedVessel.id}`)}
+                style={({ pressed }) => [
+                  styles.selectedPanel,
+                  {
+                    backgroundColor: colors.secondary,
+                    borderColor: colors.border,
+                    opacity: pressed ? 0.8 : 1,
+                  },
+                ]}
+              >
+                <View style={[styles.selectedIcon, { backgroundColor: selectedVessel.status === 'on_hire' ? colors.mapMarkerOnHire : colors.mapMarker }]}>
+                  <Feather
+                    name="anchor"
+                    size={16}
+                    color={selectedVessel.status === 'on_hire' ? colors.mapMarkerOnHireForeground : colors.mapMarkerForeground}
+                  />
+                </View>
+                <View style={styles.selectedCopy}>
+                  <Text numberOfLines={1} style={[styles.selectedName, { color: colors.foreground }]}>{selectedVessel.name}</Text>
+                  <Text numberOfLines={1} style={[styles.selectedMeta, { color: colors.mutedForeground }]}>
+                    {selectedVessel.vesselType} · {selectedVessel.tradingArea || 'Route details available'}
+                  </Text>
+                </View>
+                <Feather name="arrow-up-right" size={17} color={colors.primary} />
+              </Pressable>
+            ) : null}
+
+            <View style={[styles.statsStrip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: colors.primary }]}>{isLoading ? '—' : total}</Text>
+                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Listings</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: colors.statusAvailable }]}>{isLoading ? '—' : available}</Text>
+                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Available</Text>
+              </View>
+              <View style={[styles.statItem, styles.statsUpdated]}>
+                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Updated</Text>
+                <Text style={[styles.updatedText, { color: colors.foreground }]}>Just now</Text>
+              </View>
+            </View>
+
+            <View style={styles.listHeading}>
+              <Text style={[styles.listTitle, { color: colors.foreground }]}>Vessels in view</Text>
+              <Text style={[styles.listCount, { color: colors.mutedForeground }]}>{total} shown</Text>
+            </View>
+          </View>
+        }
         contentContainerStyle={[
           styles.listContent,
           { paddingBottom: (Platform.OS === 'web' ? 84 : insets.bottom + 80) + 16 },
         ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={refetch}
-            tintColor={colors.primary}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />}
         ListEmptyComponent={renderEmpty()}
         showsVerticalScrollIndicator={false}
+        scrollEnabled
       />
+      {isLoading ? (
+        <View style={[styles.loadingCenter, { backgroundColor: colors.background + 'A8' }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+  header: { paddingHorizontal: 16, paddingBottom: 14 },
+  topRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  brandMark: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  brandCopy: { flex: 1, marginLeft: 10 },
+  routeCaption: { fontFamily: 'Inter_400Regular', fontSize: 13, marginBottom: 14 },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -295,7 +327,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    marginBottom: 10,
+    marginTop: 14,
+    marginBottom: 16,
   },
   statItem: {
     flex: 1,
@@ -317,12 +350,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 14,
     paddingHorizontal: 12,
-    height: 42,
+    height: 48,
   },
   searchInput: { flex: 1, fontFamily: 'Inter_400Regular', fontSize: 15 },
-  filtersSection: { marginTop: 8 },
+  filtersSection: { marginTop: 10, marginBottom: 12, padding: 12, borderWidth: 1, borderRadius: 16 },
   filterLabel: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 11,
@@ -337,7 +370,26 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   chipText: { fontFamily: 'Inter_500Medium', fontSize: 12 },
-  listContent: { paddingHorizontal: 16, paddingTop: 12 },
+  chipRow: { gap: 7, paddingRight: 6 },
+  selectedPanel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 11,
+    marginTop: 12,
+  },
+  selectedIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  selectedCopy: { flex: 1 },
+  selectedName: { fontFamily: 'Inter_700Bold', fontSize: 14 },
+  selectedMeta: { fontFamily: 'Inter_400Regular', fontSize: 11, marginTop: 2 },
+  statsUpdated: { alignItems: 'flex-end', flex: 1.3 },
+  updatedText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, marginTop: 2 },
+  listHeading: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 },
+  listTitle: { fontFamily: 'Inter_700Bold', fontSize: 18, letterSpacing: -0.25 },
+  listCount: { fontFamily: 'Inter_500Medium', fontSize: 11 },
+  listContent: { paddingHorizontal: 16 },
   loadingCenter: {
     position: 'absolute',
     top: 0,
