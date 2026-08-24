@@ -36,13 +36,24 @@ export default function LoginScreen() {
       Alert.alert('Missing fields', message);
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      const message = 'Please enter a valid email address.';
+      setValidationMessage(message);
+      Alert.alert('Invalid email', message);
+      return;
+    }
     setValidationMessage(null);
     setLoading(true);
     try {
       await login(email.trim().toLowerCase(), password);
       router.replace('/(tabs)');
     } catch (err: unknown) {
-      Alert.alert('Login failed', err instanceof Error ? err.message : 'Unknown error');
+      const serverMessage = err instanceof Error ? err.message : '';
+      const message = /invalid credentials|incorrect/i.test(serverMessage)
+        ? 'Your email or password is incorrect.'
+        : serverMessage || 'We could not sign you in. Please check your details and try again.';
+      setValidationMessage(message);
+      Alert.alert('Login failed', message);
     } finally {
       setLoading(false);
     }
@@ -109,7 +120,10 @@ export default function LoginScreen() {
               placeholder="Email address"
               placeholderTextColor={colors.mutedForeground}
               value={email}
-              onChangeText={setEmail}
+                onChangeText={(value) => {
+                  setEmail(value);
+                  setValidationMessage(null);
+                }}
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
@@ -124,8 +138,11 @@ export default function LoginScreen() {
               style={[styles.input, { color: colors.foreground }]}
               placeholder="Password"
               placeholderTextColor={colors.mutedForeground}
-              value={password}
-              onChangeText={setPassword}
+                value={password}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  setValidationMessage(null);
+                }}
               secureTextEntry={!showPassword}
               autoComplete="password"
               accessibilityLabel="Password"
