@@ -1,0 +1,12 @@
+export type UserRole = 'client' | 'broker' | 'owner' | 'admin';
+export type VesselStatus = 'available' | 'on_hire' | 'laid_up' | 'decommissioned';
+export type CharterStatus = 'enquiry' | 'negotiating' | 'active' | 'confirmed' | 'declined' | 'terminated';
+export interface User { id: number; name: string; email: string; role: UserRole; company?: string | null; phone?: string | null; createdAt: string }
+export interface VesselPhoto { id: number; vesselId: number; objectPath: string; sortOrder: number; uploadedAt: string }
+export interface Vessel { id: number; ownerId: number; name: string; vesselType: string; flag?: string | null; dwt?: string | null; status: VesselStatus; firstPhotoPath?: string | null; createdAt: string; updatedAt: string }
+export interface VesselDetail extends Vessel { imoNumber?: string | null; grt?: string | null; yearBuilt?: number | null; loa?: string | null; beam?: string | null; draft?: string | null; classificationSociety?: string | null; tradingArea?: string | null; description?: string | null; contacts: Array<{contactName:string; phone?:string|null; email?:string|null; address?:string|null}>; photos: VesselPhoto[] }
+export interface VesselFormData { name: string; vesselType: string; imoNumber?:string; flag?:string; dwt?:string; grt?:string; yearBuilt?:string; loa?:string; beam?:string; draft?:string; classificationSociety?:string; tradingArea?:string; description?:string; status?:VesselStatus; contacts?: Array<{contactName:string; phone?:string; email?:string; address?:string}> }
+export interface CharterParty { id:number; vesselId:number; chartererId:number; ownerId:number; rate?:string|null; rateCurrency:string; rateBasis?:string|null; laycanEarliest?:string|null; laycanLatest?:string|null; durationDays?:number|null; cargoPurpose?:string|null; terms?:string|null; status:CharterStatus; vesselName?:string|null; chartererName?:string|null; createdAt:string; updatedAt:string }
+export type CharterFormData = Partial<Pick<CharterParty, 'rate'|'rateCurrency'|'rateBasis'|'laycanEarliest'|'laycanLatest'|'cargoPurpose'|'terms'>> & {durationDays?: string};
+export const VESSEL_TYPES = ['Bulk Carrier','Tanker','Container Ship','General Cargo','Offshore Supply Vessel','Passenger','Tugboat','Other'] as const;
+export const VESSEL_STATUSES: VesselStatus[] = ['available','on_hire','laid_up','decommissioned'];
