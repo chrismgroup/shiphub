@@ -16,11 +16,12 @@ import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
 import { NavigationMap } from '@/components/NavigationMap';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
+import * as LocalAuthentication from 'expo-local-authentication';
 
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { login } = useAuth();
+  const { login, biometricLogin, hasBiometricLogin } = useAuth();
   const { reason } = useLocalSearchParams<{ reason?: string }>();
 
   const [email, setEmail] = useState('');
@@ -28,6 +29,33 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  const [biometricLabel, setBiometricLabel] = useState('Use Face ID or fingerprint');
+
+  React.useEffect(() => {
+    if (Platform.OS === 'web') return;
+    LocalAuthentication.supportedAuthenticationTypesAsync().then((types) => {
+      if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+        setBiometricLabel('Use Face ID');
+      } else if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+        setBiometricLabel('Use fingerprint');
+      }
+    }).catch(() => {});
+  }, []);
+
+  async function handleBiometricLogin() {
+    setValidationMessage(null);
+    setLoading(true);
+    try {
+      await biometricLogin();
+      router.replace('/(tabs)');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Biometric sign-in was not completed.';
+      setValidationMessage(message);
+      Alert.alert('Biometric sign-in failed', message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleLogin() {
     if (!email.trim() || !password) {
@@ -175,6 +203,20 @@ export default function LoginScreen() {
               </View>
             )}
           </Pressable>
+          {Platform.OS !== 'web' && hasBiometricLogin ? (
+            <Pressable
+              testID="biometric-login"
+              onPress={handleBiometricLogin}
+              disabled={loading}
+              style={({ pressed }) => [
+                styles.biometricBtn,
+                { borderColor: colors.border, opacity: pressed || loading ? 0.65 : 1 },
+              ]}
+            >
+              <Feather name="shield" size={16} color={colors.primary} />
+              <Text style={[styles.biometricBtnText, { color: colors.primary }]}>{biometricLabel}</Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
 
@@ -277,6 +319,16 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
     fontSize: 16,
   },
+  biometricBtn: {
+    height: 46,
+    borderWidth: 1,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  biometricBtnText: { fontFamily: 'Inter_600SemiBold', fontSize: 13 },
   registerLink: { marginTop: 22, alignItems: 'center' },
   registerText: { fontFamily: 'Inter_400Regular', fontSize: 14 },
   registerHighlight: { fontFamily: 'Inter_600SemiBold' },
