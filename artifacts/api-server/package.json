@@ -8,7 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "NODE_ENV=test SHIPHUB_LOCAL_FIXTURE_MODE=true node build-test.mjs && NODE_ENV=test SHIPHUB_LOCAL_FIXTURE_MODE=true node --test .test-build/charters.lifecycle.test.cjs; status=$?; rm -rf .test-build; exit $status"
+    "test": "NODE_ENV=test SHIPHUB_LOCAL_FIXTURE_MODE=true node build-test.mjs && NODE_ENV=test SHIPHUB_LOCAL_FIXTURE_MODE=true node --test .test-build/charters.lifecycle.test.cjs .test-build/owners-api-proxy.test.cjs; status=$?; rm -rf .test-build; exit $status"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",

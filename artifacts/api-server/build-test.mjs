@@ -1,11 +1,16 @@
 import { build } from "esbuild";
 
-await build({
-  entryPoints: ["src/routes/charters.lifecycle.test.ts"],
-  bundle: true,
-  platform: "node",
-  format: "cjs",
-  outfile: ".test-build/charters.lifecycle.test.cjs",
-  sourcemap: "inline",
-  external: ["*.node"],
-});
+for (const [entryPoint, outfile] of [
+  ["src/routes/charters.lifecycle.test.ts", ".test-build/charters.lifecycle.test.cjs"],
+  ["src/routes/owners-api-proxy.test.ts", ".test-build/owners-api-proxy.test.cjs"],
+]) {
+  await build({
+    entryPoints: [entryPoint],
+    bundle: true,
+    platform: "node",
+    format: "cjs",
+    outfile,
+    sourcemap: "inline",
+    external: ["*.node"],
+  });
+}
