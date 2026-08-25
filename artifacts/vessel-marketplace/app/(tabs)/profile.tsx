@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Alert,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -20,7 +21,7 @@ const ROLE_LABELS: Record<string, string> = {
   broker: 'Ship Broker',
 };
 
-type PolicyKey = 'about' | 'use' | 'privacy' | 'support';
+type PolicyKey = 'about' | 'company' | 'use' | 'privacy' | 'faq' | 'support' | 'contact';
 
 export default function ProfileScreen() {
   const colors = useColors();
@@ -67,6 +68,15 @@ export default function ProfileScreen() {
         },
       ],
     );
+  }
+
+  async function openEmail(address: string) {
+    const supported = await Linking.canOpenURL(`mailto:${address}`);
+    if (supported) {
+      await Linking.openURL(`mailto:${address}`);
+    } else {
+      Alert.alert('Email unavailable', `Please email ${address} from your mail app.`);
+    }
   }
 
   if (!user) return null;
@@ -128,18 +138,43 @@ export default function ProfileScreen() {
       <View style={styles.policyList}>
         <PolicyCard
           icon="info"
-          title="About ShipHub"
-          summary="What the app does and who it is for."
+          title="About the app"
+          summary="What ShipHub does and who it is for."
           expanded={expandedPolicy === 'about'}
           onPress={() => setExpandedPolicy(expandedPolicy === 'about' ? null : 'about')}
           colors={colors}
         >
           <PolicyParagraph colors={colors}>
-            ShipHub is a maritime chartering marketplace for ship owners, brokers, and charterers. It helps users discover vessel availability, review vessel information, and start or manage charter enquiries in one place.
+            ShipHub is a maritime chartering marketplace for ship owners, brokers, and charterers. Use it to discover vessel availability, review vessel information, and start or manage charter enquiries in one place.
           </PolicyParagraph>
           <PolicyParagraph colors={colors}>
-            Chrism Group (UK) Limited operates this service for professional business use. Vessel information and enquiry status are provided through the ShipHub platform and may change as owners update their listings.
+            The app helps you follow enquiries from the first request through owner responses, counter-offers, confirmation, and the final charter agreement.
           </PolicyParagraph>
+          <PolicyParagraph colors={colors}>
+            Chrism Group (UK) Limited designs and operates ShipHub for professional maritime and commercial use. Vessel information and enquiry status may change as owners update their listings.
+          </PolicyParagraph>
+        </PolicyCard>
+
+        <PolicyCard
+          icon="users"
+          title="About us"
+          summary="Meet the company behind ShipHub."
+          expanded={expandedPolicy === 'company'}
+          onPress={() => setExpandedPolicy(expandedPolicy === 'company' ? null : 'company')}
+          colors={colors}
+        >
+          <PolicyParagraph colors={colors}>
+            Chrism Group (UK) Limited is the company behind ShipHub. We build practical digital tools that help maritime professionals connect, share reliable information, and manage commercial activity with greater clarity.
+          </PolicyParagraph>
+          <PolicyParagraph colors={colors}>
+            ShipHub is designed to support trusted communication between vessel owners, brokers, and charterers while keeping each party’s role and responsibilities clear.
+          </PolicyParagraph>
+          <EmailAction
+            address="info@chrismgroup.com"
+            label="Email Chrism Group"
+            onPress={() => openEmail('info@chrismgroup.com')}
+            colors={colors}
+          />
         </PolicyCard>
 
         <PolicyCard
@@ -181,15 +216,78 @@ export default function ProfileScreen() {
 
         <PolicyCard
           icon="help-circle"
-          title="Help and support"
-          summary="Need help with an account or charter enquiry?"
+          title="FAQ"
+          summary="Answers to common ShipHub questions."
+          expanded={expandedPolicy === 'faq'}
+          onPress={() => setExpandedPolicy(expandedPolicy === 'faq' ? null : 'faq')}
+          colors={colors}
+        >
+          <FaqItem
+            question="How do I find a vessel?"
+            answer="Open Home, browse available vessels, and use the vessel type, availability, and laycan filters to narrow the results."
+            colors={colors}
+          />
+          <FaqItem
+            question="What happens after I send an enquiry?"
+            answer="The owner reviews your enquiry first. You can then review an owner response, accept it, or continue the discussion with counter-offers."
+            colors={colors}
+          />
+          <FaqItem
+            question="Can I change my enquiry?"
+            answer="Open the relevant charter activity to review its current terms. If the owner has responded, use the counter-offer flow to propose updated terms."
+            colors={colors}
+          />
+          <FaqItem
+            question="Where can I find my agreement?"
+            answer="Once both parties confirm the same offer, ShipHub creates the final agreement in your charter activity."
+            colors={colors}
+          />
+          <FaqItem
+            question="How do I delete my account?"
+            answer="Scroll to the bottom of My Profile and choose Delete account. Account deletion is permanent and may be blocked while you have an active charter."
+            colors={colors}
+          />
+        </PolicyCard>
+
+        <PolicyCard
+          icon="help-circle"
+          title="Support"
+          summary="Get help with your account or charter enquiry."
           expanded={expandedPolicy === 'support'}
           onPress={() => setExpandedPolicy(expandedPolicy === 'support' ? null : 'support')}
           colors={colors}
         >
           <PolicyParagraph colors={colors}>
-            For account, vessel, or charter enquiry support, contact your Chrism Group (UK) Limited relationship or operations contact. Include the relevant vessel name or enquiry reference, but never send your password or an access token.
+            For help with your account, a vessel listing, or a charter enquiry, email our support team. Include the relevant vessel name or enquiry reference so we can help more quickly.
           </PolicyParagraph>
+          <EmailAction
+            address="support.shiphub@chrismgroup.com"
+            label="Email ShipHub support"
+            onPress={() => openEmail('support.shiphub@chrismgroup.com')}
+            colors={colors}
+          />
+          <Text style={[styles.legalNote, { color: colors.mutedForeground }]}>
+            Never send your password, biometric details, or an access token by email.
+          </Text>
+        </PolicyCard>
+
+        <PolicyCard
+          icon="send"
+          title="Contact us"
+          summary="Contact Chrism Group (UK) Limited."
+          expanded={expandedPolicy === 'contact'}
+          onPress={() => setExpandedPolicy(expandedPolicy === 'contact' ? null : 'contact')}
+          colors={colors}
+        >
+          <PolicyParagraph colors={colors}>
+            For general enquiries, partnership discussions, or information about Chrism Group (UK) Limited, contact us by email.
+          </PolicyParagraph>
+          <EmailAction
+            address="info@chrismgroup.com"
+            label="Email Chrism Group"
+            onPress={() => openEmail('info@chrismgroup.com')}
+            colors={colors}
+          />
         </PolicyCard>
       </View>
 
@@ -292,6 +390,54 @@ function PolicyBullet({
   );
 }
 
+function FaqItem({
+  question,
+  answer,
+  colors,
+}: {
+  question: string;
+  answer: string;
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <View style={styles.faqItem}>
+      <Text style={[styles.faqQuestion, { color: colors.foreground }]}>{question}</Text>
+      <Text style={[styles.faqAnswer, { color: colors.secondaryForeground }]}>{answer}</Text>
+    </View>
+  );
+}
+
+function EmailAction({
+  address,
+  label,
+  onPress,
+  colors,
+}: {
+  address: string;
+  label: string;
+  onPress: () => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${address}`}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.emailAction,
+        { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}33`, opacity: pressed ? 0.72 : 1 },
+      ]}
+    >
+      <Feather name="mail" size={16} color={colors.primary} />
+      <View style={styles.emailContent}>
+        <Text style={[styles.emailLabel, { color: colors.primary }]}>{label}</Text>
+        <Text style={[styles.emailAddress, { color: colors.foreground }]}>{address}</Text>
+      </View>
+      <Feather name="external-link" size={16} color={colors.primary} />
+    </Pressable>
+  );
+}
+
 function InfoRow({
   icon,
   label,
@@ -391,6 +537,20 @@ const styles = StyleSheet.create({
   policyParagraph: { fontFamily: 'Inter_400Regular', fontSize: 13, lineHeight: 20 },
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
   bulletText: { flex: 1, fontFamily: 'Inter_400Regular', fontSize: 13, lineHeight: 19 },
+  faqItem: { gap: 4 },
+  faqQuestion: { fontFamily: 'Inter_600SemiBold', fontSize: 13, lineHeight: 18 },
+  faqAnswer: { fontFamily: 'Inter_400Regular', fontSize: 13, lineHeight: 19 },
+  emailAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 11,
+  },
+  emailContent: { flex: 1, gap: 2 },
+  emailLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 12 },
+  emailAddress: { fontFamily: 'Inter_500Medium', fontSize: 13 },
   legalNote: { fontFamily: 'Inter_400Regular', fontSize: 11, lineHeight: 17, fontStyle: 'italic' },
   logoutBtn: {
     flexDirection: 'row',
