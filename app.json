@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "ecc99656-b901-4bf8-aa79-c8b61cf28e46"
+      }
+    },
+    "android": {
+      "package": "com.chrismoil.workspace"
+    }
+  }
+}
