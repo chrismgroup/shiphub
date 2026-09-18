@@ -24,6 +24,20 @@ services:
       - key: SHIPHUB_OWNERS_API_KEY
         sync: false
 
+  - type: web
+    name: shiphub-marketplace
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @workspace/vessel-marketplace run build
+    startCommand: node artifacts/vessel-marketplace/server/serve.js
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: EXPO_PUBLIC_API_URL
+        value: https://shiphub-api.onrender.com/api
+      - key: EXPO_PUBLIC_DOMAIN
+        value: shiphub-marketplace.onrender.com
+
 databases:
   - name: shiphub-db
     plan: free

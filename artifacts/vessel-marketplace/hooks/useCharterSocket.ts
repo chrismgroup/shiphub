@@ -14,10 +14,16 @@ import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getToken } from "@/lib/api";
 
+const DEFAULT_API_URL =
+  process.env.NODE_ENV !== "production"
+    ? "http://localhost:5000/api"
+    : "https://shiphub-api.onrender.com/api";
+
 function getWsUrl(token: string): string {
   const encodedToken = encodeURIComponent(token);
   const ownersApiUrl = process.env.EXPO_PUBLIC_OWNERS_API_BASE_URL;
-  const apiBaseUrl = ownersApiUrl || process.env.EXPO_PUBLIC_API_URL;
+  const apiBaseUrl =
+    ownersApiUrl || process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL;
   if (apiBaseUrl) {
     const apiUrl = new URL(apiBaseUrl);
     const protocol = apiUrl.protocol === "https:" ? "wss:" : "ws:";
@@ -37,8 +43,8 @@ function getWsUrl(token: string): string {
     return `${proto}//${window.location.host}/api/ws/charters?token=${encodedToken}`;
   }
 
-  // Fallback for native dev without EXPO_PUBLIC_DOMAIN set
-  return `ws://localhost/api/ws/charters?token=${encodedToken}`;
+  // Fallback for native dev without a public API URL set
+  return `ws://localhost:5000/api/ws/charters?token=${encodedToken}`;
 }
 
 export function useCharterSocket(charterId?: number): void {

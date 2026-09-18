@@ -16,6 +16,7 @@ import type {
 // Token provider — set by AuthContext on login
 let _tokenGetter: (() => string | null) | null = null;
 let _unauthorizedHandler: (() => void) | null = null;
+const RENDER_API_URL = "https://shiphub-api.onrender.com/api";
 
 export function setTokenGetter(fn: (() => string | null) | null) {
   _tokenGetter = fn;
@@ -35,7 +36,9 @@ function getBaseUrl(): string {
 
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
   if (domain) return `https://${domain}/api`;
-  return "/api";
+
+  if (process.env.NODE_ENV !== "production") return "http://localhost:5000/api";
+  return RENDER_API_URL;
 }
 
 export function vesselPhotoUrl(objectPath: string): string {
