@@ -10,17 +10,18 @@
  * network interruptions with exponential back-off, and disconnects on unmount.
  */
 
-import { useEffect, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { getToken } from '@/lib/api';
+import { useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { getToken } from "@/lib/api";
 
 function getWsUrl(token: string): string {
   const encodedToken = encodeURIComponent(token);
   const ownersApiUrl = process.env.EXPO_PUBLIC_OWNERS_API_BASE_URL;
-  if (ownersApiUrl) {
-    const apiUrl = new URL(ownersApiUrl);
-    const protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
-    const apiPath = apiUrl.pathname.replace(/\/+$/, '');
+  const apiBaseUrl = ownersApiUrl || process.env.EXPO_PUBLIC_API_URL;
+  if (apiBaseUrl) {
+    const apiUrl = new URL(apiBaseUrl);
+    const protocol = apiUrl.protocol === "https:" ? "wss:" : "ws:";
+    const apiPath = apiUrl.pathname.replace(/\/+$/, "");
     return `${protocol}//${apiUrl.host}${apiPath}/ws/charters?token=${encodedToken}`;
   }
 
@@ -31,8 +32,8 @@ function getWsUrl(token: string): string {
   }
 
   // Web browser — derive protocol + host from current page
-  if (typeof window !== 'undefined' && window.location) {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  if (typeof window !== "undefined" && window.location) {
+    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
     return `${proto}//${window.location.host}/api/ws/charters?token=${encodedToken}`;
   }
 
@@ -79,19 +80,22 @@ export function useCharterSocket(charterId?: number): void {
             charterId?: number;
           };
 
-          if (msg.type === 'charter_updated') {
+          if (msg.type === "charter_updated") {
             // Invalidate the specific charter if we're watching one
             if (charterId != null) {
-              qc.invalidateQueries({ queryKey: ['charter', charterId] });
+              qc.invalidateQueries({ queryKey: ["charter", charterId] });
             }
             // Also invalidate if the updated charter is the one we're on
             if (msg.charterId != null && msg.charterId === charterId) {
-              qc.invalidateQueries({ queryKey: ['charter', msg.charterId] });
+              qc.invalidateQueries({ queryKey: ["charter", msg.charterId] });
             }
           }
 
-          if (msg.type === 'charter_list_updated' || msg.type === 'charter_updated') {
-            qc.invalidateQueries({ queryKey: ['charter-parties'] });
+          if (
+            msg.type === "charter_list_updated" ||
+            msg.type === "charter_updated"
+          ) {
+            qc.invalidateQueries({ queryKey: ["charter-parties"] });
           }
         } catch {
           /* ignore malformed messages */
