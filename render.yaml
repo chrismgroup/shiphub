@@ -3,7 +3,7 @@ services:
     name: shiphub-api
     runtime: node
     plan: free
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server run build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server run build
     startCommand: node --enable-source-maps artifacts/api-server/dist/index.mjs
     healthCheckPath: /api/healthz
     envVars:
@@ -28,7 +28,7 @@ services:
     name: shiphub-marketplace
     runtime: node
     plan: free
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @workspace/vessel-marketplace run build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @workspace/vessel-marketplace run build
     startCommand: node artifacts/vessel-marketplace/server/serve.js
     envVars:
       - key: NODE_VERSION
